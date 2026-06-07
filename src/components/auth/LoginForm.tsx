@@ -15,14 +15,9 @@ import {
 import { useRouter } from "next/navigation";
 import { RoleSelector } from "@/src/components/auth/RoleSelector";
 import {
-  fetchAccessibleStores,
-  fetchPermissions,
-  getFirstAllowedRoute,
   getLoginAccount,
   getLoginToken,
   login,
-  normalizePermissions,
-  normalizeStores,
 } from "@/src/features/auth/api";
 import type { AuthRole } from "@/src/features/auth/types";
 import { saveAuth } from "@/src/lib/authStorage";
@@ -120,31 +115,6 @@ export function LoginForm() {
     setTheme(getStoredTheme());
   }, []);
 
-  async function getRouteAfterLogin(selectedRole: AuthRole) {
-    if (selectedRole !== "manager") {
-      return "/dashboard";
-    }
-
-    try {
-      const storesResponse = await fetchAccessibleStores();
-      const stores = normalizeStores(storesResponse);
-      const firstStore = stores[0];
-      const storePermissions = firstStore?.permissions;
-
-      if (storePermissions?.length) {
-        return getFirstAllowedRoute(selectedRole, storePermissions);
-      }
-
-      const permissionsResponse = await fetchPermissions(firstStore?.id);
-      return getFirstAllowedRoute(
-        selectedRole,
-        normalizePermissions(permissionsResponse),
-      );
-    } catch {
-      return "/dashboard";
-    }
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -168,7 +138,7 @@ export function LoginForm() {
       }
 
       saveAuth(token, getLoginAccount(response, role), remember);
-      router.replace(await getRouteAfterLogin(role));
+      router.replace("/store-select");
     } catch (loginError) {
       setError(getReadableError(loginError));
     } finally {

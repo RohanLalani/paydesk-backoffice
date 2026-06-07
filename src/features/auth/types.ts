@@ -22,16 +22,3 @@ export type LoginResponse = {
   user?: Partial<AuthAccount>;
   permissions?: string[];
 };
-
-export type StoreSummary = {
-  id?: string;
-  permissions?: string[];
-  [key: string]: unknown;
-};
-
-export type PermissionResponse = {
-  permissions?: string[];
-  data?: {
-    permissions?: string[];
-  };
-};
