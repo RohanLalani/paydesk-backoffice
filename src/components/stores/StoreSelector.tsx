@@ -3,9 +3,8 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRightFromLine, CheckCircle2, Loader2, Plus, Search } from "lucide-react";
-import { CreateStoreModal } from "@/src/components/stores/CreateStoreModal";
+import { motion } from "framer-motion";
+import { ArrowRightFromLine, Loader2, Plus, Search } from "lucide-react";
 import { StoreCard } from "@/src/components/stores/StoreCard";
 import {
   isStoreSortOption,
@@ -48,21 +47,6 @@ const themeStyles = {
     empty: "border-indigo-200/10 bg-[#0b1026]/88 text-slate-300",
   },
 } satisfies Record<PayDeskTheme, Record<string, string>>;
-
-function hasCreatePermission() {
-  const account = getAccount();
-
-  if (!account) {
-    return false;
-  }
-
-  return account.role === "owner" || account.permissions?.includes("add_store") === true;
-}
-
-function getDisplayName() {
-  const account = getAccount();
-  return account?.name || account?.email || "PayDesk user";
-}
 
 function getInitials(value: string) {
   const parts = value.trim().split(/\s+/);
@@ -152,8 +136,6 @@ export function StoreSelector() {
   const [stores, setStores] = useState<Store[]>([]);
   const [query, setQuery] = useState("");
   const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const [sortOption, setSortOption] = useState<StoreSortOption>("recently_added");
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
@@ -173,18 +155,24 @@ export function StoreSelector() {
   }
 
   useEffect(() => {
-    setTheme(getStoredTheme());
-    setCanCreate(hasCreatePermission());
-    setDisplayName(getDisplayName());
-    const savedSort = window.localStorage.getItem(STORE_SORT_KEY);
-    setSortOption(isStoreSortOption(savedSort) ? savedSort : "recently_added");
+    queueMicrotask(() => {
+      const account = getAccount();
+      const savedSort = window.localStorage.getItem(STORE_SORT_KEY);
+
+      setTheme(getStoredTheme());
+      setCanCreate(account?.role === "owner");
+      setDisplayName(account?.name || account?.email || "PayDesk user");
+      setSortOption(isStoreSortOption(savedSort) ? savedSort : "recently_added");
+    });
 
     if (!getToken()) {
       router.replace("/login");
       return;
     }
 
-    void loadStores();
+    queueMicrotask(() => {
+      void loadStores();
+    });
   }, [router]);
 
   const visibleStores = useMemo(() => {
@@ -215,13 +203,7 @@ export function StoreSelector() {
   }
 
   function handleCreateStore() {
-    setSuccessMessage("");
-    setShowCreateModal(true);
-  }
-
-  async function handleStoreCreated() {
-    await loadStores();
-    setSuccessMessage("Store created successfully.");
+    router.push("/createStore");
   }
 
   return (
@@ -320,22 +302,6 @@ export function StoreSelector() {
             </div>
           </div>
 
-          {successMessage ? (
-            <motion.div
-              className={`mt-5 flex items-center gap-2 rounded-[8px] border px-4 py-3 text-sm font-semibold ${
-                theme === "dark"
-                  ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
-              }`}
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-              {successMessage}
-            </motion.div>
-          ) : null}
-
           <div className="mt-6 grid flex-1 content-start gap-4 overflow-y-auto pb-2 lg:grid-cols-2">
             {loadState === "loading" ? (
               Array.from({ length: 4 }, (_, index) => <SkeletonCard key={index} theme={theme} />)
@@ -392,17 +358,6 @@ export function StoreSelector() {
           </div>
         </div>
       </motion.section>
-
-      <AnimatePresence>
-        {showCreateModal ? (
-          <CreateStoreModal
-            theme={theme}
-            canCreate={canCreate}
-            onClose={() => setShowCreateModal(false)}
-            onCreated={handleStoreCreated}
-          />
-        ) : null}
-      </AnimatePresence>
     </main>
   );
 }

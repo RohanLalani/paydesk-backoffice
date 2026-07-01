@@ -73,7 +73,9 @@ export function PayDeskSplash() {
   const styles = useMemo(() => themeStyles[theme], [theme]);
 
   useEffect(() => {
-    setTheme(getSavedTheme());
+    queueMicrotask(() => {
+      setTheme(getSavedTheme());
+    });
   }, []);
 
   useEffect(() => {

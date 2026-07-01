@@ -14,12 +14,24 @@ export async function getMyStores() {
   });
 }
 
-export const fetchMyStores = getMyStores;
+export async function fetchMyStores(options: { includeInactive?: boolean } = {}) {
+  const query = options.includeInactive ? "?includeInactive=true" : "";
+
+  return apiClient<StoreApiResponse>(`/store/my-stores${query}`, {
+    method: "GET",
+  });
+}
 
 export async function createStore(input: CreateStoreInput) {
   return apiClient<CreateStoreResponse>("/store/create", {
     method: "POST",
     body: input,
+  });
+}
+
+export async function activateStore(storeId: string) {
+  return apiClient<CreateStoreResponse>(`/store/${storeId}/activate`, {
+    method: "PATCH",
   });
 }
 
@@ -48,4 +60,12 @@ export function normalizeStoreResponse(response: StoreApiResponse): Store[] {
     : response.data ?? response.stores ?? response.items ?? [];
 
   return stores.map(normalizeStore);
+}
+
+export function normalizeCreateStoreResponse(response: CreateStoreResponse): Store {
+  const store = "id" in response || "_id" in response
+    ? response
+    : response.data ?? response.store ?? {};
+
+  return normalizeStore(store, 0);
 }

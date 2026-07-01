@@ -82,9 +82,11 @@ export default function AccountSettingsPage() {
   const themeStyles = useMemo(() => styles[theme], [theme]);
 
   useEffect(() => {
-    setTheme(getStoredTheme());
-    setAccount(getAccount());
-    setSelectedStore(getSelectedStore());
+    queueMicrotask(() => {
+      setTheme(getStoredTheme());
+      setAccount(getAccount());
+      setSelectedStore(getSelectedStore());
+    });
 
     if (!getToken()) {
       router.replace("/login");

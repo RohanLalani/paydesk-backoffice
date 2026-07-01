@@ -1,4 +1,4 @@
-import { getToken } from "@/src/lib/authStorage";
+import { clearAuth, getToken } from "@/src/lib/authStorage";
 
 type ApiClientOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;
@@ -11,6 +11,18 @@ export class ApiClientError extends Error {
     super(message);
     this.name = "ApiClientError";
     this.status = status;
+  }
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  clearAuth();
+
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
   }
 }
 
@@ -27,6 +39,10 @@ function getErrorMessage(value: unknown) {
 
   if (typeof error.message === "string") {
     return error.message;
+  }
+
+  if (Array.isArray(error.message)) {
+    return error.message.filter((message) => typeof message === "string").join(" ");
   }
 
   if (typeof error.error === "string") {
@@ -81,6 +97,10 @@ export async function apiClient<T>(
   const payload = hasJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectToLogin();
+    }
+
     throw new ApiClientError(
       getErrorMessage(payload) ?? "Sign in failed. Please check your details and try again.",
       response.status,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   BarChart3,
   Boxes,
+  CreditCard,
   Gauge,
   Package,
   Settings,
@@ -23,6 +24,7 @@ export type BackOfficeNavKey =
   | "customers"
   | "employees"
   | "permissions"
+  | "billing"
   | "settings";
 
 type SidebarItem = {
@@ -31,6 +33,7 @@ type SidebarItem = {
   href: string;
   icon: typeof Gauge;
   permission?: string;
+  ownerOnly?: boolean;
 };
 
 const sidebarItems: SidebarItem[] = [
@@ -41,10 +44,15 @@ const sidebarItems: SidebarItem[] = [
   { key: "customers", label: "Customers", href: "/customers", icon: Users, permission: "manage_customers" },
   { key: "employees", label: "Employees", href: "/employees", icon: UsersRound, permission: "manage_employees" },
   { key: "permissions", label: "Permissions", href: "/permissions", icon: ShieldCheck, permission: "manage_permissions" },
+  { key: "billing", label: "Billing", href: "/billing", icon: CreditCard, ownerOnly: true },
   { key: "settings", label: "Settings", href: "/settings/account", icon: Settings },
 ];
 
 function canShowItem(account: AuthAccount | null, item: SidebarItem) {
+  if (item.ownerOnly && account?.role !== "owner") {
+    return false;
+  }
+
   if (!item.permission || !account || account.role === "owner" || account.role === "partner") {
     return true;
   }
@@ -115,7 +123,7 @@ export function BackOfficeSidebar({
         }`}
         aria-label="Back office mobile"
       >
-        {visibleItems.slice(0, 8).map((item) => {
+        {visibleItems.slice(0, 9).map((item) => {
           const Icon = item.icon;
           const isActive = item.key === activeItem;
 
