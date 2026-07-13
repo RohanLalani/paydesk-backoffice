@@ -1,4 +1,5 @@
 export type SubscriptionPlan = "plus" | "advanced";
+export type CheckoutPlan = "PLUS" | "ADVANCED";
 export type BillingCycle = "monthly" | "annual";
 export type SubscriptionStatus = "trial" | "active" | "inactive" | "cancelled";
 
@@ -30,4 +31,14 @@ export type BillingSubscription = {
   currentPeriodEnd?: string | null;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type CreateStoreCheckoutSessionInput = {
+  storeId: string;
+  plan: CheckoutPlan;
+};
+
+export type StoreCheckoutSession = {
+  checkoutUrl: string;
+  checkoutSessionId: string;
 };

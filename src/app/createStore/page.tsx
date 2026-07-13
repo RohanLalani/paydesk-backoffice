@@ -14,9 +14,7 @@ import {
   Power,
   Store,
 } from "lucide-react";
-import { getBillingSubscription } from "@/src/features/billing/api";
 import {
-  activateStore,
   createStore,
   fetchMyStores,
   normalizeCreateStoreResponse,
@@ -28,7 +26,7 @@ import { ApiClientError } from "@/src/lib/apiClient";
 import { getAccount, getToken } from "@/src/lib/authStorage";
 import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 
-type FormStatus = "idle" | "creating" | "activating";
+type FormStatus = "idle" | "creating";
 
 const pageStyles = {
   light: {
@@ -96,72 +94,6 @@ function mapCreateError(error: unknown) {
   return "Could not create store. Please try again.";
 }
 
-function mapActivationError(error: unknown) {
-  console.error("Activate store failed", error);
-
-  const message = getRawMessage(error);
-  const normalizedMessage = message.toLowerCase();
-
-  if (normalizedMessage.includes("subscription store limit reached")) {
-    return {
-      message: "Your subscription store limit has been reached.",
-      showBillingLink: true,
-    };
-  }
-
-  if (
-    normalizedMessage.includes("active subscription") ||
-    normalizedMessage.includes("active or trial") ||
-    isInternalServerError(error)
-  ) {
-    return {
-      message: "You need an active subscription before activating this store.",
-      showBillingLink: true,
-    };
-  }
-
-  if (
-    error instanceof ApiClientError &&
-    error.status === 403 &&
-    (normalizedMessage.includes("only owners") || normalizedMessage.includes("permission"))
-  ) {
-    return {
-      message: "Only owners can activate stores.",
-      showBillingLink: false,
-    };
-  }
-
-  if (error instanceof ApiClientError && error.status === 400 && !isInternalServerError(error)) {
-    return {
-      message,
-      showBillingLink: false,
-    };
-  }
-
-  return {
-    message: "Could not activate store. Please try again.",
-    showBillingLink: false,
-  };
-}
-
-function mapBillingCheckError(error: unknown) {
-  console.debug("Billing subscription lookup failed", error);
-
-  const message = getRawMessage(error).toLowerCase();
-
-  if (
-    error instanceof ApiClientError &&
-    (error.status === 403 ||
-      error.status === 404 ||
-      message.includes("active or trial") ||
-      isInternalServerError(error))
-  ) {
-    return "You need an active subscription before activating this store.";
-  }
-
-  return "Could not check billing. Please try again.";
-}
-
 export default function CreateStorePage() {
   const router = useRouter();
   const nameRef = useRef<HTMLInputElement>(null);
@@ -175,7 +107,6 @@ export default function CreateStorePage() {
   const [draftStores, setDraftStores] = useState<StoreRecord[]>([]);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [error, setError] = useState("");
-  const [showBillingLink, setShowBillingLink] = useState(false);
   const [success, setSuccess] = useState("");
   const styles = useMemo(() => pageStyles[theme], [theme]);
 
@@ -212,26 +143,22 @@ export default function CreateStorePage() {
 
     if (!isOwner) {
       setError("Only owners can create stores.");
-      setShowBillingLink(false);
       return;
     }
 
     if (!trimmedName) {
       setError("Store Name is required.");
-      setShowBillingLink(false);
       nameRef.current?.focus();
       return;
     }
 
     if (!businessType) {
       setError("Business Type is required.");
-      setShowBillingLink(false);
       return;
     }
 
     setStatus("creating");
     setError("");
-    setShowBillingLink(false);
     setSuccess("");
 
     try {
@@ -246,42 +173,6 @@ export default function CreateStorePage() {
       await loadDraftStores();
     } catch (createError) {
       setError(mapCreateError(createError));
-    } finally {
-      setStatus("idle");
-    }
-  }
-
-  async function handleActivateStore(store: StoreRecord) {
-    if (!isOwner) {
-      setError("Only owners can activate stores.");
-      setShowBillingLink(false);
-      return;
-    }
-
-    setStatus("activating");
-    setError("");
-    setShowBillingLink(false);
-    setSuccess("");
-
-    try {
-      await getBillingSubscription();
-    } catch (billingError) {
-      setError(mapBillingCheckError(billingError));
-      setShowBillingLink(true);
-      setStatus("idle");
-      return;
-    }
-
-    try {
-      const response = await activateStore(store.id);
-      const activatedStore = normalizeCreateStoreResponse(response);
-      setCreatedStore(activatedStore);
-      setSuccess("Store activated successfully.");
-      await Promise.all([loadDraftStores(), getBillingSubscription().catch(() => null)]);
-    } catch (activationError) {
-      const normalizedError = mapActivationError(activationError);
-      setError(normalizedError.message);
-      setShowBillingLink(normalizedError.showBillingLink);
     } finally {
       setStatus("idle");
     }
@@ -366,7 +257,6 @@ export default function CreateStorePage() {
                         onChange={(event) => {
                           setName(event.target.value);
                           setError("");
-                          setShowBillingLink(false);
                         }}
                         placeholder="Example: Downtown Store"
                         disabled={status !== "idle"}
@@ -390,7 +280,6 @@ export default function CreateStorePage() {
                         onChange={(event) => {
                           setAddress(event.target.value);
                           setError("");
-                          setShowBillingLink(false);
                         }}
                         placeholder="Example: 123 Main Street, Beaumont, TX"
                         disabled={status !== "idle"}
@@ -414,7 +303,6 @@ export default function CreateStorePage() {
                         onChange={(event) => {
                           setBusinessType(event.target.value as StoreBusinessType | "");
                           setError("");
-                          setShowBillingLink(false);
                         }}
                         disabled={status !== "idle"}
                         className={`h-12 w-full appearance-none rounded-[8px] border pl-11 pr-4 text-sm font-semibold outline-none transition focus:ring-4 disabled:cursor-not-allowed disabled:opacity-70 ${styles.input}`}
@@ -439,14 +327,6 @@ export default function CreateStorePage() {
                         <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                         <span>{error}</span>
                       </div>
-                      {showBillingLink ? (
-                        <Link
-                          href="/billing"
-                          className="mt-3 inline-flex h-10 items-center rounded-[7px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd]"
-                        >
-                          Go to Billing
-                        </Link>
-                      ) : null}
                     </div>
                   ) : null}
 
@@ -472,19 +352,13 @@ export default function CreateStorePage() {
                     </button>
 
                     {createdStore ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleActivateStore(createdStore)}
-                        disabled={status !== "idle" || createdStore.isActive === true}
-                        className={`inline-flex h-11 items-center justify-center gap-2 rounded-[7px] border px-5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${styles.control}`}
+                      <Link
+                        href={`/activateStore?storeId=${encodeURIComponent(createdStore.id)}`}
+                        className={`inline-flex h-11 items-center justify-center gap-2 rounded-[7px] border px-5 text-sm font-bold transition ${styles.control}`}
                       >
-                        {status === "activating" ? (
-                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                        ) : (
-                          <Power className="size-4" aria-hidden="true" />
-                        )}
+                        <Power className="size-4" aria-hidden="true" />
                         Activate Store
-                      </button>
+                      </Link>
                     ) : null}
 
                     <Link
@@ -513,15 +387,13 @@ export default function CreateStorePage() {
                     <p className={`mt-1 text-xs font-semibold ${styles.muted}`}>
                       {store.address || "Address not set"}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => void handleActivateStore(store)}
-                      disabled={status !== "idle"}
+                    <Link
+                      href={`/activateStore?storeId=${encodeURIComponent(store.id)}`}
                       className="mt-3 inline-flex h-9 items-center gap-2 rounded-[7px] bg-[#4f2df2] px-3 text-xs font-bold text-white transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Power className="size-3.5" aria-hidden="true" />
                       Activate
-                    </button>
+                    </Link>
                   </div>
                 ))
               ) : (
