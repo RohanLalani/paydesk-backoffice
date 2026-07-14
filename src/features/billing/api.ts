@@ -4,6 +4,7 @@ import type {
   BillingSubscription,
   CheckoutPlan,
   CreateStoreCheckoutSessionInput,
+  StoreActivationStatus,
   StoreCheckoutSession,
   SubscriptionPlan,
 } from "@/src/features/billing/types";
@@ -38,4 +39,13 @@ export async function createStoreCheckoutSession(
       plan: validatedPlan,
     },
   });
+}
+
+export async function getStoreActivationStatus(storeId: string) {
+  return apiClient<StoreActivationStatus>(
+    `/billing/store-activation-status/${encodeURIComponent(storeId)}`,
+    {
+      method: "GET",
+    },
+  );
 }

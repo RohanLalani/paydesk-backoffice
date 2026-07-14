@@ -62,7 +62,6 @@ function getSavedTheme(): PayDeskTheme {
     return savedTheme;
   }
 
-  window.localStorage.setItem(THEME_STORAGE_KEY, "light");
   return "light";
 }
 

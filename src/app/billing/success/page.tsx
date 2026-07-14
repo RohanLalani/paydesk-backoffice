@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Loader2, RefreshCw, Store } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Store, XCircle } from "lucide-react";
 import { saveSelectedStore } from "@/src/context/StoreContext";
-import { fetchMyStores, normalizeStoreResponse } from "@/src/features/stores/api";
-import type { Store as StoreRecord } from "@/src/features/stores/types";
+import { getStoreActivationStatus } from "@/src/features/billing/api";
+import type { StoreActivationStatus } from "@/src/features/billing/types";
+import { isStoreBusinessType } from "@/src/features/stores/businessTypes";
 import { getToken } from "@/src/lib/authStorage";
 import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 
@@ -26,6 +27,8 @@ const pageStyles = {
     control:
       "border-[#d8d2ee] bg-white text-slate-700 hover:border-[#7c5cff]/50 hover:text-[#4f2df2]",
     success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    inactive: "border-rose-200 bg-rose-50 text-rose-700",
+    skeleton: "bg-slate-200",
   },
   dark: {
     screen:
@@ -40,6 +43,8 @@ const pageStyles = {
     control:
       "border-indigo-200/10 bg-[#0b1026] text-slate-300 hover:border-[#7c5cff]/60 hover:text-[#c8c1ff]",
     success: "border-emerald-400/20 bg-emerald-950/30 text-emerald-200",
+    inactive: "border-rose-400/20 bg-rose-950/30 text-rose-200",
+    skeleton: "bg-white/10",
   },
 } satisfies Record<PayDeskTheme, Record<string, string>>;
 
@@ -47,12 +52,12 @@ function BillingSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storeId = searchParams.get("storeId")?.trim() ?? "";
-  const checkoutSessionId = searchParams.get("session_id")?.trim() ?? "";
   const [theme, setTheme] = useState<PayDeskTheme>("light");
-  const [store, setStore] = useState<StoreRecord | null>(null);
+  const [activationStatus, setActivationStatus] = useState<StoreActivationStatus | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isChecking, setIsChecking] = useState(false);
-  const [checksRemaining, setChecksRemaining] = useState(8);
   const styles = useMemo(() => pageStyles[theme], [theme]);
+  const isActive = activationStatus?.isActive === true;
 
   useEffect(() => {
     if (!getToken()) {
@@ -65,42 +70,60 @@ function BillingSuccessContent() {
     });
   }, [router]);
 
-  const checkActivationStatus = useCallback(async (shouldRedirect: boolean) => {
+  const checkActivationStatus = useCallback(async () => {
     if (!storeId) {
+      setErrorMessage("Store not found.");
       return;
     }
 
     setIsChecking(true);
+    setErrorMessage("");
 
     try {
-      const response = await fetchMyStores({ includeInactive: true });
-      const stores = normalizeStoreResponse(response);
-      const matchingStore = stores.find((item) => item.id === storeId) ?? null;
-      setStore(matchingStore);
-
-      if (matchingStore?.isActive && shouldRedirect) {
-        saveSelectedStore(matchingStore);
-        router.replace("/dashboard");
-      }
+      const status = await getStoreActivationStatus(storeId);
+      setActivationStatus(status);
     } catch (error) {
       console.debug("Activation status lookup failed", error);
+      setErrorMessage("Could not check activation status. Please try again.");
     } finally {
       setIsChecking(false);
     }
-  }, [router, storeId]);
+  }, [storeId]);
 
   useEffect(() => {
-    if (!storeId || checksRemaining <= 0 || store?.isActive) {
+    queueMicrotask(() => {
+      void checkActivationStatus();
+    });
+  }, [checkActivationStatus]);
+
+  useEffect(() => {
+    if (!storeId || isActive) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setChecksRemaining((value) => value - 1);
-      void checkActivationStatus(true);
-    }, 3000);
+    const timer = window.setInterval(() => {
+      void checkActivationStatus();
+    }, 5000);
 
-    return () => window.clearTimeout(timer);
-  }, [checkActivationStatus, checksRemaining, store?.isActive, storeId]);
+    return () => window.clearInterval(timer);
+  }, [checkActivationStatus, isActive, storeId]);
+
+  const openDashboard = useCallback(() => {
+    if (!activationStatus?.isActive) {
+      return;
+    }
+
+    saveSelectedStore({
+      id: activationStatus.storeId,
+      name: activationStatus.name,
+      address: activationStatus.address ?? undefined,
+      businessType: isStoreBusinessType(activationStatus.businessType)
+        ? activationStatus.businessType
+        : "other",
+      isActive: activationStatus.isActive,
+    });
+    router.push("/dashboard");
+  }, [activationStatus, router]);
 
   return (
     <main className={`min-h-dvh w-full px-4 py-6 sm:px-6 lg:px-8 ${styles.screen}`}>
@@ -127,12 +150,12 @@ function BillingSuccessContent() {
             </span>
             <p className="mt-6 text-sm font-bold text-[#7c5cff]">Payment received</p>
             <h1 className={`mt-2 text-3xl font-bold leading-tight tracking-normal ${styles.title}`}>
-              Store activation is processing
+              {isActive ? "Store Activated" : "Store activation is processing"}
             </h1>
             <p className={`mt-3 max-w-[620px] text-base font-medium leading-6 ${styles.subtitle}`}>
-              Stripe confirmed your checkout. PayDesk will activate the store
-              after the verified webhook finishes processing, which may take a
-              few seconds.
+              {isActive
+                ? "Your store is now active and ready to use."
+                : "Stripe confirmed your payment. PayDesk is waiting for the verified webhook before activating your store."}
             </p>
 
             <dl className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -140,30 +163,60 @@ function BillingSuccessContent() {
                 <dt className={`text-xs font-bold uppercase tracking-[0.08em] ${styles.muted}`}>Store</dt>
                 <dd className="mt-2 flex items-center gap-2 text-lg font-extrabold">
                   <Store className="size-4 text-[#4f2df2]" aria-hidden="true" />
-                  {store?.name ?? (storeId || "Pending store")}
+                  {activationStatus?.name ?? (storeId || "Pending store")}
                 </dd>
               </div>
-              <div className={`rounded-[8px] border p-4 ${styles.border}`}>
-                <dt className={`text-xs font-bold uppercase tracking-[0.08em] ${styles.muted}`}>Checkout session</dt>
-                <dd className="mt-2 truncate text-sm font-bold">{checkoutSessionId || "Not provided"}</dd>
+              <div
+                className={`rounded-[8px] border p-4 ${
+                  isActive ? styles.success : styles.inactive
+                }`}
+              >
+                <dt className="text-xs font-bold uppercase tracking-[0.08em]">Activation Status</dt>
+                <dd className="mt-2 flex items-center gap-2 text-lg font-extrabold">
+                  {isChecking && !activationStatus ? (
+                    <>
+                      <span className={`h-7 w-28 animate-pulse rounded-[6px] ${styles.skeleton}`} />
+                    </>
+                  ) : isActive ? (
+                    <>
+                      <CheckCircle2 className="size-5" aria-hidden="true" />
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="size-5" aria-hidden="true" />
+                      Inactive
+                    </>
+                  )}
+                </dd>
               </div>
             </dl>
 
-            {store?.isActive ? (
-              <div className={`mt-5 rounded-[8px] border p-4 text-sm font-semibold ${styles.success}`}>
-                Store is active. Opening the dashboard...
+            {errorMessage ? (
+              <div className={`mt-5 rounded-[8px] border p-4 text-sm font-semibold ${styles.inactive}`}>
+                {errorMessage}
               </div>
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => void checkActivationStatus(true)}
-              disabled={isChecking || !storeId}
-              className="mt-6 inline-flex h-11 items-center gap-2 rounded-[7px] bg-[#4f2df2] px-5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,45,242,0.28)] transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isChecking ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-              Check activation status
-            </button>
+            {isActive ? (
+              <button
+                type="button"
+                onClick={openDashboard}
+                className="mt-6 inline-flex h-11 items-center gap-2 rounded-[7px] bg-[#4f2df2] px-5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,45,242,0.28)] transition hover:bg-[#4322dd]"
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void checkActivationStatus()}
+                disabled={isChecking || !storeId}
+                className="mt-6 inline-flex h-11 items-center gap-2 rounded-[7px] bg-[#4f2df2] px-5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,45,242,0.28)] transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isChecking ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                Check activation status
+              </button>
+            )}
           </section>
         </div>
       </motion.section>

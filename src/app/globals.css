@@ -1,8 +1,45 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
+  --font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-family-mono: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+  --border-radius: 6px;
+  --white: #ffffff;
+  --paydesk-purple: #4f2df2;
+  --paydesk-purple-soft: #7c5cff;
+  --paydesk-surface: #ffffff;
+  --paydesk-surface-muted: #f8f7ff;
+  --paydesk-border: #d8d2ee;
+  --paydesk-muted: #64748b;
+  --paydesk-success: #047857;
+  --paydesk-danger: #be123c;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #171717;
+  --paydesk-surface: #ffffff;
+  --paydesk-surface-muted: #f8f7ff;
+  --paydesk-border: #d8d2ee;
+  --paydesk-muted: #64748b;
+  --paydesk-success: #047857;
+  --paydesk-danger: #be123c;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #020617;
+  --foreground: #eceaff;
+  --paydesk-surface: #071126;
+  --paydesk-surface-muted: #0b1026;
+  --paydesk-border: rgba(199, 210, 254, 0.12);
+  --paydesk-muted: #cbd5e1;
+  --paydesk-success: #6ee7b7;
+  --paydesk-danger: #fecdd3;
 }
 
 @theme inline {
@@ -25,5 +62,5 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family);
 }

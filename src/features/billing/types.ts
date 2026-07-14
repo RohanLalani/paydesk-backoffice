@@ -2,6 +2,16 @@ export type SubscriptionPlan = "plus" | "advanced";
 export type CheckoutPlan = "PLUS" | "ADVANCED";
 export type BillingCycle = "monthly" | "annual";
 export type SubscriptionStatus = "trial" | "active" | "inactive" | "cancelled";
+export type StoreSubscriptionStatus =
+  | "pending"
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused";
 
 export type SubscriptionAddon = {
   id: string;
@@ -41,4 +51,14 @@ export type CreateStoreCheckoutSessionInput = {
 export type StoreCheckoutSession = {
   checkoutUrl: string;
   checkoutSessionId: string;
+};
+
+export type StoreActivationStatus = {
+  storeId: string;
+  name: string;
+  address: string | null;
+  businessType: string;
+  isActive: boolean;
+  subscriptionStatus: StoreSubscriptionStatus | null;
+  plan: SubscriptionPlan | null;
 };

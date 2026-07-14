@@ -17,10 +17,18 @@ export function getStoredTheme(): PayDeskTheme {
     return savedTheme;
   }
 
-  window.localStorage.setItem(PAYDESK_THEME_KEY, "light");
   return "light";
+}
+
+export function applyDocumentTheme(theme: PayDeskTheme) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.documentElement.dataset.theme = theme;
 }
 
 export function setStoredTheme(theme: PayDeskTheme) {
   window.localStorage.setItem(PAYDESK_THEME_KEY, theme);
+  applyDocumentTheme(theme);
 }
