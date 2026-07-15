@@ -5,6 +5,7 @@ import type {
   Store,
   StoreApiItem,
   StoreApiResponse,
+  StoreFeaturesResponse,
 } from "@/src/features/stores/types";
 import { isStoreBusinessType } from "@/src/features/stores/businessTypes";
 
@@ -19,6 +20,32 @@ export const fetchMyStores = getMyStores;
 export async function createStore(input: CreateStoreInput) {
   return apiClient<CreateStoreResponse>("/store/create", {
     method: "POST",
+    body: input,
+  });
+}
+
+export async function getStoreFeatures(storeId: string) {
+  return apiClient<StoreFeaturesResponse>(`/store/${storeId}/features`, {
+    method: "GET",
+  });
+}
+
+export async function updateStoreFeatures(
+  storeId: string,
+  input: { lottery?: boolean; recipeSuite?: boolean },
+) {
+  return apiClient<StoreFeaturesResponse>(`/store/${storeId}/features`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function updateStore(
+  storeId: string,
+  input: { name?: string; address?: string | null; businessType?: Store["businessType"] },
+) {
+  return apiClient<Store>(`/store/${storeId}`, {
+    method: "PATCH",
     body: input,
   });
 }

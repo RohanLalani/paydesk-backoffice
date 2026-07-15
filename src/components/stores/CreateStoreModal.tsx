@@ -104,6 +104,8 @@ export function CreateStoreModal({
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [businessType, setBusinessType] = useState<StoreBusinessType | "">("");
+  const [lotteryEnabled, setLotteryEnabled] = useState(false);
+  const [recipeSuiteEnabled, setRecipeSuiteEnabled] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const styles = useMemo(() => modalStyles[theme], [theme]);
@@ -175,6 +177,8 @@ export function CreateStoreModal({
         name: trimmedName,
         address: trimmedAddress || null,
         businessType,
+        lotteryEnabled,
+        recipeSuiteEnabled,
       });
       await onCreated();
       onClose();
@@ -186,6 +190,8 @@ export function CreateStoreModal({
             name: trimmedName,
             address: trimmedAddress || null,
             businessType,
+            lotteryEnabled,
+            recipeSuiteEnabled,
           }),
         );
         router.push("/billing");
@@ -356,6 +362,55 @@ export function CreateStoreModal({
                 </select>
               </div>
             </div>
+
+            <fieldset className="grid gap-3">
+              <legend className={`text-sm font-bold ${styles.label}`}>
+                Included Store Features
+              </legend>
+              {[
+                {
+                  id: "store-feature-lottery",
+                  label: "Lottery",
+                  description: "Show lottery tools for this store.",
+                  checked: lotteryEnabled,
+                  onChange: setLotteryEnabled,
+                },
+                {
+                  id: "store-feature-recipe-suite",
+                  label: "Recipe Suite",
+                  description: "Show recipe and production tools for this store.",
+                  checked: recipeSuiteEnabled,
+                  onChange: setRecipeSuiteEnabled,
+                },
+              ].map((feature) => (
+                <label
+                  key={feature.id}
+                  htmlFor={feature.id}
+                  className={`flex cursor-pointer items-start gap-3 rounded-[8px] border p-3 text-sm transition ${
+                    feature.checked
+                      ? "border-[#4F22F2] bg-[#4F22F2]/10"
+                      : theme === "dark"
+                        ? "border-[rgba(148,163,184,0.18)] bg-[#111827]"
+                        : "border-[#CBD5E1] bg-white"
+                  }`}
+                >
+                  <input
+                    id={feature.id}
+                    type="checkbox"
+                    checked={feature.checked}
+                    onChange={(event) => feature.onChange(event.target.checked)}
+                    disabled={isSubmitting}
+                    className="mt-1 size-4 accent-[#4F22F2]"
+                  />
+                  <span>
+                    <span className={`block font-bold ${styles.label}`}>{feature.label}</span>
+                    <span className={`mt-1 block text-xs font-medium leading-5 ${styles.helper}`}>
+                      {feature.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
 
             {error ? (
               <div className={`flex gap-2 rounded-[8px] border px-3 py-3 text-sm font-semibold ${styles.error}`}>

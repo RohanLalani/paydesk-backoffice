@@ -35,6 +35,19 @@ export type StoreStaffMember = {
   [key: string]: unknown;
 };
 
+export type StoreCapabilityStatus = {
+  enabled: boolean;
+  available: boolean;
+  source?: "setup" | "manual" | "subscription" | "system";
+  billingStatus?: string;
+};
+
+export type StoreCapabilities = {
+  lottery: StoreCapabilityStatus;
+  recipeSuite: StoreCapabilityStatus;
+  loyalty: StoreCapabilityStatus;
+};
+
 export type Store = {
   id: string;
   name: string;
@@ -48,6 +61,7 @@ export type Store = {
   users?: StoreStaffMember[];
   employees?: StoreStaffMember[];
   assignedUsers?: StoreStaffMember[];
+  capabilities?: StoreCapabilities;
   [key: string]: unknown;
 };
 
@@ -62,6 +76,13 @@ export type CreateStoreInput = {
   name: string;
   address?: string | null;
   businessType: StoreBusinessType;
+  lotteryEnabled?: boolean;
+  recipeSuiteEnabled?: boolean;
+};
+
+export type StoreFeaturesResponse = {
+  storeId: string;
+  features: StoreCapabilities;
 };
 
 export type CreateStoreResponse =

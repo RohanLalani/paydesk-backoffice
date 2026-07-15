@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeftRight, Bell, Store as StoreIcon } from "lucide-react";
 import type { AuthAccount } from "@/src/features/auth/types";
 import type { Store } from "@/src/features/stores/types";
+import type { StoreCapabilities } from "@/src/features/stores/types";
+import { useStoreCapabilities } from "@/src/features/stores/capabilities";
 import { getSelectedStore } from "@/src/context/StoreContext";
 import { getAccount, getToken } from "@/src/lib/authStorage";
 import { getStoreTypeConfig } from "@/src/lib/storeTypeConfig";
@@ -15,8 +17,15 @@ import { ENABLE_LIVE_SUPPORT, LiveSupportCard } from "@/src/components/support/L
 type BackOfficeShellProps = {
   activeItem?: BackOfficeNavKey;
   requiredPermission?: string;
-  sectionSidebar?: (context: { theme: PayDeskTheme; account: AuthAccount | null; selectedStore: Store }) => ReactNode;
-  children: (context: { theme: PayDeskTheme; account: AuthAccount | null; selectedStore: Store }) => ReactNode;
+  sectionSidebar?: (context: BackOfficeShellContext) => ReactNode;
+  children: (context: BackOfficeShellContext) => ReactNode;
+};
+
+export type BackOfficeShellContext = {
+  theme: PayDeskTheme;
+  account: AuthAccount | null;
+  selectedStore: Store;
+  capabilities: StoreCapabilities;
 };
 
 function formatStatus(store: Store) {
@@ -54,6 +63,7 @@ export function BackOfficeShell({
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [account, setAccount] = useState<AuthAccount | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const { capabilities } = useStoreCapabilities(selectedStore);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -130,7 +140,7 @@ export function BackOfficeShell({
   return (
     <main className={`min-h-dvh ${shellStyles.screen}`}>
       <div className="flex min-h-dvh">
-        <BackOfficeSidebar activeItem={activeItem} account={account} theme={theme} />
+        <BackOfficeSidebar activeItem={activeItem} account={account} theme={theme} capabilities={capabilities} />
 
         <section className={`min-w-0 flex-1 pb-20 lg:pb-0 ${shellStyles.main}`}>
           <header className={`sticky top-0 z-20 flex min-h-20 items-center justify-between gap-4 border-b px-4 py-3 sm:px-6 ${shellStyles.header}`}>
@@ -190,10 +200,10 @@ export function BackOfficeShell({
           </header>
 
           <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
-            {sectionSidebar?.({ theme, account, selectedStore })}
+            {sectionSidebar?.({ theme, account, selectedStore, capabilities })}
 
             <div className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-              {children({ theme, account, selectedStore })}
+              {children({ theme, account, selectedStore, capabilities })}
             </div>
           </div>
 
