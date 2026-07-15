@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { BackOfficeShell, type BackOfficeShellContext } from "@/src/components/layout/BackOfficeShell";
-import { addLoyaltyService, getStoreServices, removeLoyaltyService, type LoyaltyService } from "@/src/features/billing/api";
+import {
+  addLoyaltyService,
+  getStoreBillingSummary,
+  getStoreServices,
+  removeLoyaltyService,
+  type LoyaltyService,
+  type StoreBillingSummary,
+} from "@/src/features/billing/api";
 import { STORE_CAPABILITIES_UPDATED_EVENT } from "@/src/features/stores/capabilities";
 import { updateStoreFeatures } from "@/src/features/stores/api";
 
@@ -23,14 +30,179 @@ function statusLabel(status?: string) {
   }
 }
 
+function LoyaltyConfirmationDialog({
+  theme,
+  title = "Add Loyalty Service?",
+  description = "Loyalty will be added to this store's existing Stripe subscription for $49 per month.",
+  storeName,
+  basePlan,
+  mode = "add",
+  isProcessing,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  theme: BackOfficeShellContext["theme"];
+  title?: string;
+  description?: string;
+  storeName: string;
+  basePlan?: string | null;
+  mode?: "add" | "remove";
+  isProcessing: boolean;
+  error: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isDark = theme === "dark";
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      cancelButtonRef.current?.focus();
+    });
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape" && !isProcessing) {
+        onCancel();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isProcessing, onCancel]);
+
+  function handleFocusTrap(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+
+    if (!focusable?.length) {
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 px-4 py-0 backdrop-blur-sm sm:items-center sm:py-6"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isProcessing) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-loyalty-title"
+        aria-describedby="add-loyalty-description"
+        onKeyDown={handleFocusTrap}
+        className={`w-full max-w-[560px] rounded-t-[18px] border p-5 shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:rounded-[14px] sm:p-6 ${
+          isDark ? "border-slate-400/15 bg-[#0b1224] text-[#f4f1ff]" : "border-[#ded8f3] bg-white text-slate-950"
+        }`}
+      >
+        <h2 id="add-loyalty-title" className="text-2xl font-bold tracking-normal">
+          {title}
+        </h2>
+        <p id="add-loyalty-description" className={`mt-3 text-sm font-semibold leading-6 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+          {description}
+        </p>
+
+        <dl className={`mt-5 grid gap-3 rounded-[8px] border p-4 ${isDark ? "border-slate-400/15 bg-white/[0.04]" : "border-[#ded8f3] bg-[#fbfaff]"}`}>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-xs font-bold uppercase text-slate-500">Store</dt>
+            <dd className="text-sm font-bold">{storeName}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-xs font-bold uppercase text-slate-500">Current base plan</dt>
+            <dd className="text-sm font-bold capitalize">{basePlan ?? "Unavailable"}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-xs font-bold uppercase text-slate-500">Loyalty price</dt>
+            <dd className="text-sm font-bold text-[#4f2df2]">$49/month</dd>
+          </div>
+        </dl>
+
+        {mode === "add" ? (
+          <div className={`mt-5 space-y-3 text-sm font-semibold leading-6 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+            <p>The charge will be added to your Stripe subscription and may appear on your next invoice depending on the current billing cycle.</p>
+            <p>The service remains active until removed.</p>
+            <p>Removing Loyalty does not cancel the store&apos;s base Plus or Advanced plan.</p>
+          </div>
+        ) : (
+          <div className={`mt-5 space-y-3 text-sm font-semibold leading-6 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+            <p>Loyalty data will be preserved after the service is removed.</p>
+            <p>Removing Loyalty does not cancel the store&apos;s base Plus or Advanced plan.</p>
+          </div>
+        )}
+
+        {error ? (
+          <p className="mt-5 rounded-[8px] border border-red-500/25 bg-red-500/10 p-3 text-sm font-bold text-red-500">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            ref={cancelButtonRef}
+            type="button"
+            onClick={onCancel}
+            disabled={isProcessing}
+            className={`h-11 rounded-[7px] border px-5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35 disabled:cursor-not-allowed disabled:opacity-60 ${
+              isDark ? "border-slate-400/15 bg-transparent text-slate-200 hover:border-[#7c5cff]/60" : "border-[#ded8f3] bg-white text-slate-700 hover:border-[#7c5cff]/60 hover:text-[#4f2df2]"
+            }`}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isProcessing}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[7px] bg-[#4f2df2] px-5 text-sm font-bold text-white transition hover:bg-[#4322dd] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isProcessing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            {isProcessing ? (mode === "add" ? "Adding..." : "Removing...") : mode === "add" ? "Confirm and Add" : "Confirm and Remove"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShellContext) {
   const isDark = theme === "dark";
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   const [lottery, setLottery] = useState(capabilities.lottery.available);
   const [recipeSuite, setRecipeSuite] = useState(capabilities.recipeSuite.available);
   const [loyalty, setLoyalty] = useState<LoyaltyService | null>(null);
+  const [billingSummary, setBillingSummary] = useState<StoreBillingSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingFeature, setIsSavingFeature] = useState(false);
   const [isSavingService, setIsSavingService] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [addDialogError, setAddDialogError] = useState("");
+  const [removeDialogError, setRemoveDialogError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -47,10 +219,11 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
       setError("");
     });
 
-    getStoreServices(selectedStore.id)
-      .then((response) => {
+    Promise.all([getStoreServices(selectedStore.id), getStoreBillingSummary(selectedStore.id)])
+      .then(([servicesResponse, billingResponse]) => {
         if (mounted) {
-          setLoyalty(response.services.loyalty);
+          setLoyalty(servicesResponse.services.loyalty);
+          setBillingSummary(billingResponse);
         }
       })
       .catch((servicesError) => {
@@ -86,35 +259,63 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
     }
   }
 
-  async function handleAddLoyalty() {
+  function closeAddDialog() {
+    setShowAddDialog(false);
+    setAddDialogError("");
+    queueMicrotask(() => {
+      addButtonRef.current?.focus();
+    });
+  }
+
+  async function refreshServicesAndBilling() {
+    const [servicesResponse, billingResponse] = await Promise.all([
+      getStoreServices(selectedStore.id),
+      getStoreBillingSummary(selectedStore.id),
+    ]);
+    setLoyalty(servicesResponse.services.loyalty);
+    setBillingSummary(billingResponse);
+  }
+
+  async function handleConfirmAddLoyalty() {
+    if (isSavingService) {
+      return;
+    }
+
     setIsSavingService(true);
-    setError("");
+    setAddDialogError("");
+    setSuccessMessage("");
 
     try {
       const response = await addLoyaltyService(selectedStore.id);
       setLoyalty(response.service);
+      await refreshServicesAndBilling();
       window.dispatchEvent(new Event(STORE_CAPABILITIES_UPDATED_EVENT));
+      setSuccessMessage("Loyalty has been added to this store.");
+      closeAddDialog();
     } catch (serviceError) {
-      setError(serviceError instanceof Error ? serviceError.message : "Could not add Loyalty.");
+      setAddDialogError(serviceError instanceof Error ? serviceError.message : "Could not add Loyalty.");
     } finally {
       setIsSavingService(false);
     }
   }
 
-  async function handleRemoveLoyalty() {
-    if (!window.confirm("Remove Loyalty from this store subscription? Loyalty data will be preserved.")) {
-      return;
-    }
+  function closeRemoveDialog() {
+    setShowRemoveDialog(false);
+    setRemoveDialogError("");
+  }
 
+  async function handleRemoveLoyalty() {
     setIsSavingService(true);
-    setError("");
+    setRemoveDialogError("");
 
     try {
       const response = await removeLoyaltyService(selectedStore.id);
       setLoyalty(response.service);
+      await refreshServicesAndBilling();
       window.dispatchEvent(new Event(STORE_CAPABILITIES_UPDATED_EVENT));
+      closeRemoveDialog();
     } catch (serviceError) {
-      setError(serviceError instanceof Error ? serviceError.message : "Could not remove Loyalty.");
+      setRemoveDialogError(serviceError instanceof Error ? serviceError.message : "Could not remove Loyalty.");
     } finally {
       setIsSavingService(false);
     }
@@ -127,6 +328,7 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
         Manage included store features and optional paid services.
       </p>
 
+      {successMessage ? <p className="mt-5 rounded-[8px] border border-emerald-500/25 bg-emerald-500/10 p-3 text-sm font-bold text-emerald-500">{successMessage}</p> : null}
       {error ? <p className="mt-5 rounded-[8px] border border-red-500/25 bg-red-500/10 p-3 text-sm font-bold text-red-500">{error}</p> : null}
 
       <div className="mt-7 grid gap-5">
@@ -186,7 +388,10 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
             ) : loyalty?.active ? (
               <button
                 type="button"
-                onClick={handleRemoveLoyalty}
+                onClick={() => {
+                  setRemoveDialogError("");
+                  setShowRemoveDialog(true);
+                }}
                 disabled={isSavingService}
                 className="inline-flex h-10 items-center gap-2 rounded-[7px] border border-red-500/30 px-4 text-sm font-bold text-red-500 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -195,8 +400,12 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
               </button>
             ) : (
               <button
+                ref={addButtonRef}
                 type="button"
-                onClick={handleAddLoyalty}
+                onClick={() => {
+                  setAddDialogError("");
+                  setShowAddDialog(true);
+                }}
                 disabled={isSavingService}
                 className="inline-flex h-10 items-center gap-2 rounded-[7px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -207,6 +416,32 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
           </div>
         </section>
       </div>
+
+      {showAddDialog ? (
+        <LoyaltyConfirmationDialog
+          theme={theme}
+          storeName={selectedStore.name}
+          basePlan={billingSummary?.basePlan}
+          isProcessing={isSavingService}
+          error={addDialogError}
+          onCancel={closeAddDialog}
+          onConfirm={handleConfirmAddLoyalty}
+        />
+      ) : null}
+      {showRemoveDialog ? (
+        <LoyaltyConfirmationDialog
+          theme={theme}
+          title="Remove Loyalty Service?"
+          description="Loyalty will be removed from this store's Stripe subscription."
+          storeName={selectedStore.name}
+          basePlan={billingSummary?.basePlan}
+          mode="remove"
+          isProcessing={isSavingService}
+          error={removeDialogError}
+          onCancel={closeRemoveDialog}
+          onConfirm={handleRemoveLoyalty}
+        />
+      ) : null}
     </section>
   );
 }

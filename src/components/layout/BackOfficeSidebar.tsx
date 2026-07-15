@@ -4,127 +4,38 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Blocks,
-  Boxes,
   ChevronDown,
-  CreditCard,
-  Gauge,
-  Gift,
-  Landmark,
-  LayoutGrid,
-  MonitorUp,
-  NotebookTabs,
-  Package,
-  Printer,
-  ShieldCheck,
   SlidersHorizontal,
-  Store,
-  Ticket,
-  type LucideIcon,
 } from "lucide-react";
 import type { AuthAccount } from "@/src/features/auth/types";
 import type { StoreCapabilities } from "@/src/features/stores/types";
 import { emptyStoreCapabilities } from "@/src/features/stores/capabilities";
+import {
+  canShowPrimaryNavigationItem,
+  dashboardItem,
+  primaryNavigation,
+  sidebarCategories,
+  type BackOfficeNavKey as PrimaryNavKey,
+  type PrimaryNavigationItem,
+  type SidebarCategory,
+} from "@/src/features/navigation/primaryNavigation";
+import { resolveRouteMatch } from "@/src/features/navigation/routeMatching";
 import type { PayDeskTheme } from "@/src/lib/theme";
 
 const SIDEBAR_CATEGORY_KEY = "paydesk-sidebar-category";
 
-export type BackOfficeNavKey =
-  | "dashboard"
-  | "products"
-  | "lottery"
-  | "recipeSuite"
-  | "inventory"
-  | "sendToPos"
-  | "storeSettings"
-  | "departments"
-  | "permissions"
-  | "loyalty"
-  | "services"
-  | "bank"
-  | "billing"
-  | "receiptSetup"
-  | "analytics"
-  | "customers"
-  | "employees"
-  | "settings";
+export type BackOfficeNavKey = PrimaryNavKey;
 
-type SidebarCategory = "general" | "setup" | "analytics" | "personnel";
-
-type SidebarItem = {
-  key: BackOfficeNavKey;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  permission?: string;
-  requires?: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty">;
-};
-
-const categories: { key: SidebarCategory; label: string; empty: string }[] = [
-  { key: "general", label: "General", empty: "" },
-  { key: "setup", label: "Setup", empty: "" },
-  { key: "analytics", label: "Analytics", empty: "Analytics options coming soon." },
-  { key: "personnel", label: "Personnel", empty: "Personnel options coming soon." },
-];
-
-const dashboardItem: SidebarItem = {
-  key: "dashboard",
-  label: "Dashboard",
-  href: "/dashboard",
-  icon: Gauge,
-};
-
-const categoryItems: Record<SidebarCategory, SidebarItem[]> = {
-  general: [
-    { key: "products", label: "Products", href: "/products", icon: Package, permission: "manage_products" },
-    { key: "lottery", label: "Lottery", href: "/lottery", icon: Ticket, requires: "lottery" },
-    { key: "recipeSuite", label: "Recipe Suite", href: "/recipe-suite", icon: NotebookTabs, requires: "recipeSuite" },
-    { key: "inventory", label: "Inventory", href: "/inventory", icon: Boxes, permission: "manage_inventory" },
-    { key: "sendToPos", label: "Send to POS", href: "/send-to-pos", icon: MonitorUp },
-  ],
-  setup: [
-    { key: "storeSettings", label: "Store Settings", href: "/settings/store", icon: Store },
-    { key: "departments", label: "Departments", href: "/departments", icon: LayoutGrid, permission: "manage_products" },
-    { key: "permissions", label: "Permissions", href: "/permissions", icon: ShieldCheck, permission: "manage_permissions" },
-    { key: "loyalty", label: "Loyalty", href: "/loyalty", icon: Gift, requires: "loyalty" },
-    { key: "services", label: "Services", href: "/services", icon: Blocks },
-    { key: "bank", label: "Bank", href: "/bank", icon: Landmark },
-    { key: "billing", label: "Billing", href: "/billing", icon: CreditCard },
-    { key: "receiptSetup", label: "Print / Receipt Setup", href: "/settings/receipt", icon: Printer },
-  ],
-  analytics: [],
-  personnel: [],
-};
-
-function canShowItem(account: AuthAccount | null, item: SidebarItem, capabilities: StoreCapabilities) {
-  if (item.requires && !capabilities[item.requires]?.available) {
-    return false;
+function readStoredCategory(): SidebarCategory | null {
+  if (typeof window === "undefined") {
+    return null;
   }
 
-  if (!item.permission || !account || account.role === "owner" || account.role === "partner") {
-    return true;
-  }
-
-  return account.permissions?.includes(item.permission) === true;
+  const stored = window.localStorage.getItem(SIDEBAR_CATEGORY_KEY);
+  return sidebarCategories.some((category) => category.key === stored) ? (stored as SidebarCategory) : null;
 }
 
-function isItemActive(pathname: string, item: SidebarItem, activeItem?: BackOfficeNavKey) {
-  if (item.key === activeItem) {
-    return true;
-  }
-
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
-}
-
-function routeCategory(pathname: string): SidebarCategory | null {
-  if (pathname.startsWith("/products") || pathname.startsWith("/inventory") || pathname.startsWith("/lottery") || pathname.startsWith("/recipe-suite") || pathname.startsWith("/send-to-pos")) {
-    return "general";
-  }
-
-  if (pathname.startsWith("/settings/store") || pathname.startsWith("/settings/receipt") || pathname.startsWith("/departments") || pathname.startsWith("/permissions") || pathname.startsWith("/loyalty") || pathname.startsWith("/services") || pathname.startsWith("/bank") || pathname.startsWith("/billing")) {
-    return "setup";
-  }
-
+function fallbackRouteCategory(pathname: string): SidebarCategory | null {
   if (pathname.startsWith("/analytics") || pathname.startsWith("/reports")) {
     return "analytics";
   }
@@ -136,17 +47,7 @@ function routeCategory(pathname: string): SidebarCategory | null {
   return null;
 }
 
-function readStoredCategory(): SidebarCategory | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const stored = window.localStorage.getItem(SIDEBAR_CATEGORY_KEY);
-  return categories.some((category) => category.key === stored) ? (stored as SidebarCategory) : null;
-}
-
 export function BackOfficeSidebar({
-  activeItem = "dashboard",
   account,
   theme,
   capabilities = emptyStoreCapabilities,
@@ -160,9 +61,17 @@ export function BackOfficeSidebar({
   const isDark = theme === "dark";
   const [selectedCategory, setSelectedCategory] = useState<SidebarCategory>("general");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const visiblePrimaryItems = useMemo(
+    () => primaryNavigation.filter((item) => canShowPrimaryNavigationItem(account, item, capabilities)),
+    [account, capabilities],
+  );
+  const resolvedActiveItem = useMemo(
+    () => resolveRouteMatch(pathname, visiblePrimaryItems),
+    [pathname, visiblePrimaryItems],
+  );
 
   useEffect(() => {
-    const inferred = routeCategory(pathname);
+    const inferred = resolvedActiveItem?.category ?? fallbackRouteCategory(pathname);
 
     if (inferred) {
       queueMicrotask(() => {
@@ -174,7 +83,7 @@ export function BackOfficeSidebar({
     queueMicrotask(() => {
       setSelectedCategory(readStoredCategory() ?? "general");
     });
-  }, [pathname]);
+  }, [pathname, resolvedActiveItem]);
 
   function handleSelectCategory(category: SidebarCategory) {
     setSelectedCategory(category);
@@ -182,10 +91,10 @@ export function BackOfficeSidebar({
     window.localStorage.setItem(SIDEBAR_CATEGORY_KEY, category);
   }
 
-  const selectedCategoryMeta = categories.find((category) => category.key === selectedCategory) ?? categories[0];
+  const selectedCategoryMeta = sidebarCategories.find((category) => category.key === selectedCategory) ?? sidebarCategories[0];
   const visibleItems = useMemo(
-    () => categoryItems[selectedCategory].filter((item) => canShowItem(account, item, capabilities)),
-    [account, capabilities, selectedCategory],
+    () => visiblePrimaryItems.filter((item) => item.category === selectedCategory && item.key !== "dashboard"),
+    [selectedCategory, visiblePrimaryItems],
   );
   const mobileItems = [dashboardItem, ...visibleItems].slice(0, 8);
 
@@ -197,9 +106,9 @@ export function BackOfficeSidebar({
     ? "border-slate-400/15 bg-white/[0.04] text-slate-200 hover:border-[#7c5cff]/60"
     : "border-[#ded8f3] bg-[#fbfaff] text-slate-700 hover:border-[#7c5cff]/60 hover:text-[#4f2df2]";
 
-  function renderNavItem(item: SidebarItem, compact = false) {
+  function renderNavItem(item: PrimaryNavigationItem, compact = false) {
     const Icon = item.icon;
-    const isActive = isItemActive(pathname, item, activeItem);
+    const isActive = resolvedActiveItem?.key === item.key;
 
     return (
       <Link
@@ -255,7 +164,7 @@ export function BackOfficeSidebar({
 
           {isCategoryOpen ? (
             <div className={`absolute left-0 right-0 z-40 mt-2 rounded-[8px] border p-1 shadow-[0_18px_40px_rgba(15,23,42,0.16)] ${panelClass}`} role="menu">
-              {categories.map((category) => (
+              {sidebarCategories.map((category) => (
                 <button
                   key={category.key}
                   type="button"

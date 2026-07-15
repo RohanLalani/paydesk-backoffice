@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeftRight, Bell, Store as StoreIcon } from "lucide-react";
 import type { AuthAccount } from "@/src/features/auth/types";
@@ -12,7 +12,10 @@ import { getAccount, getToken } from "@/src/lib/authStorage";
 import { getStoreTypeConfig } from "@/src/lib/storeTypeConfig";
 import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 import { BackOfficeSidebar, type BackOfficeNavKey } from "@/src/components/layout/BackOfficeSidebar";
+import { ContextualSidebar } from "@/src/components/layout/ContextualSidebar";
 import { ENABLE_LIVE_SUPPORT, LiveSupportCard } from "@/src/components/support/LiveSupportCard";
+import { canShowPrimaryNavigationItem, primaryNavigation } from "@/src/features/navigation/primaryNavigation";
+import { resolveRouteMatch } from "@/src/features/navigation/routeMatching";
 
 type BackOfficeShellProps = {
   activeItem?: BackOfficeNavKey;
@@ -59,6 +62,7 @@ export function BackOfficeShell({
   children,
 }: BackOfficeShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [theme, setTheme] = useState<PayDeskTheme>("light");
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [account, setAccount] = useState<AuthAccount | null>(null);
@@ -126,6 +130,19 @@ export function BackOfficeShell({
 
   const typeConfig = getStoreTypeConfig(selectedStore);
   const status = formatStatus(selectedStore);
+  const visiblePrimaryItems = primaryNavigation.filter((item) =>
+    canShowPrimaryNavigationItem(account, item, capabilities),
+  );
+  const activePrimaryItem = resolveRouteMatch(pathname, visiblePrimaryItems);
+  const automaticSectionSidebar =
+    activePrimaryItem?.secondaryNavigation?.length && activePrimaryItem.secondaryLabel ? (
+      <ContextualSidebar
+        label={activePrimaryItem.secondaryLabel}
+        items={activePrimaryItem.secondaryNavigation}
+        theme={theme}
+      />
+    ) : null;
+  const renderedSectionSidebar = sectionSidebar?.({ theme, account, selectedStore, capabilities }) ?? automaticSectionSidebar;
 
   if (requiredPermission && !hasPermission(account, requiredPermission)) {
     return (
@@ -200,7 +217,7 @@ export function BackOfficeShell({
           </header>
 
           <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
-            {sectionSidebar?.({ theme, account, selectedStore, capabilities })}
+            {renderedSectionSidebar}
 
             <div className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
               {children({ theme, account, selectedStore, capabilities })}

@@ -49,7 +49,7 @@ export function getStoreServices(storeId: string) {
 export function addLoyaltyService(storeId: string) {
   return apiClient<{ storeId: string; service: LoyaltyService }>(`/billing/stores/${storeId}/services`, {
     method: "POST",
-    body: { service: "LOYALTY" },
+    body: { service: "LOYALTY", confirmed: true },
   });
 }
 

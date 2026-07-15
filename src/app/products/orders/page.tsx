@@ -1,5 +1,5 @@
 import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
 
 export default function ProductOrdersPage() {
-  return <ProductSectionPage navIndex={8} />;
+  return <ProductSectionPage href="/products/orders" />;
 }

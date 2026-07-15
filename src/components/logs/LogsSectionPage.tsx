@@ -1,17 +1,14 @@
 "use client";
 
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
-import { productSections } from "@/src/features/products/navigation";
+import { logsNavigation } from "@/src/features/logs/navigation";
 
-export function ProductSectionPage({ href }: { href: string }) {
-  const item = productSections.find((entry) => entry.href === href) ?? productSections[0];
+export function LogsSectionPage({ itemId }: { itemId: string }) {
+  const item = logsNavigation.find((entry) => entry.id === itemId) ?? logsNavigation[0];
   const Icon = item.icon;
 
   return (
-    <BackOfficeShell
-      activeItem="products"
-      requiredPermission="manage_products"
-    >
+    <BackOfficeShell activeItem="logs" requiredPermission="manage_products">
       {({ theme }) => {
         const isDark = theme === "dark";
 
@@ -32,7 +29,7 @@ export function ProductSectionPage({ href }: { href: string }) {
             <div className={`mt-8 rounded-[8px] border p-5 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}>
               <h2 className="text-base font-bold tracking-normal">Coming soon</h2>
               <p className={`mt-2 text-sm font-semibold leading-6 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                This workspace is ready for the {item.label.toLowerCase()} tools, but no backend business logic is wired up yet.
+                This log view is ready for the interface, but backend log data is not wired up yet.
               </p>
             </div>
           </section>

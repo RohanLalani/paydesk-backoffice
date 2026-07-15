@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { ItemsWorkspace } from "@/src/components/products/ItemsWorkspace";
 
 export default function ProductItemsPage() {
-  return <ProductSectionPage navIndex={0} />;
+  return <ItemsWorkspace />;
 }
