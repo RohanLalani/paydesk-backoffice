@@ -1,5 +1,7 @@
 import { getToken } from "@/src/lib/authStorage";
 
+const DEFAULT_API_URL = "https://api.paydeskapp.com";
+
 type ApiClientOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;
 };
@@ -15,7 +17,7 @@ export class ApiClientError extends Error {
 }
 
 function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+  return (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 function getErrorMessage(value: unknown) {

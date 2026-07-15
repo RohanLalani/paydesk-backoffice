@@ -133,7 +133,7 @@ export function BackOfficeSidebar({
 
   return (
     <>
-      <aside className={`hidden min-h-dvh w-[232px] shrink-0 border-r px-5 py-5 lg:flex lg:flex-col ${panelClass}`}>
+      <aside className={`hidden min-h-dvh w-[232px] shrink-0 border-r px-5 py-5 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overscroll-contain ${panelClass}`}>
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-[8px] bg-[#4f2df2] text-white">
             <SlidersHorizontal className="size-5" aria-hidden="true" />

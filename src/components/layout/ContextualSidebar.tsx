@@ -33,7 +33,7 @@ export function ContextualSidebar({
 
   return (
     <>
-      <aside className={`hidden w-[248px] shrink-0 border-r px-4 py-5 lg:block ${panelClass}`}>
+      <aside className={`hidden w-[248px] shrink-0 border-r px-4 py-5 lg:block lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain ${panelClass}`}>
         <p className={`px-2 text-[10px] font-extrabold uppercase tracking-[0.08em] ${eyebrowClass}`}>
           {label}
         </p>

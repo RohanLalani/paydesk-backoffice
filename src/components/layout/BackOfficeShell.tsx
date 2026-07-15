@@ -155,12 +155,12 @@ export function BackOfficeShell({
   }
 
   return (
-    <main className={`min-h-dvh ${shellStyles.screen}`}>
-      <div className="flex min-h-dvh">
+    <div className={`min-h-dvh lg:h-dvh lg:overflow-hidden ${shellStyles.screen}`}>
+      <div className="flex min-h-dvh lg:h-dvh lg:min-h-0 lg:overflow-hidden">
         <BackOfficeSidebar activeItem={activeItem} account={account} theme={theme} capabilities={capabilities} />
 
-        <section className={`min-w-0 flex-1 pb-20 lg:pb-0 ${shellStyles.main}`}>
-          <header className={`sticky top-0 z-20 flex min-h-20 items-center justify-between gap-4 border-b px-4 py-3 sm:px-6 ${shellStyles.header}`}>
+        <section className={`min-w-0 flex-1 pb-20 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-0 ${shellStyles.main}`}>
+          <header className={`sticky top-0 z-20 flex min-h-20 flex-none items-center justify-between gap-4 border-b px-4 py-3 sm:px-6 lg:sticky lg:top-0 ${shellStyles.header}`}>
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -216,10 +216,14 @@ export function BackOfficeShell({
             </div>
           </header>
 
-          <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
+          <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-hidden lg:flex-row">
             {renderedSectionSidebar}
 
-            <div className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+            <div
+              className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:px-8 lg:py-7"
+              role="main"
+              tabIndex={-1}
+            >
               {children({ theme, account, selectedStore, capabilities })}
             </div>
           </div>
@@ -231,6 +235,6 @@ export function BackOfficeShell({
           ) : null}
         </section>
       </div>
-    </main>
+    </div>
   );
 }
