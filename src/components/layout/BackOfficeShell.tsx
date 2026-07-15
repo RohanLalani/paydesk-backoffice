@@ -14,6 +14,8 @@ import { ENABLE_LIVE_SUPPORT, LiveSupportCard } from "@/src/components/support/L
 
 type BackOfficeShellProps = {
   activeItem?: BackOfficeNavKey;
+  requiredPermission?: string;
+  sectionSidebar?: (context: { theme: PayDeskTheme; account: AuthAccount | null; selectedStore: Store }) => ReactNode;
   children: (context: { theme: PayDeskTheme; account: AuthAccount | null; selectedStore: Store }) => ReactNode;
 };
 
@@ -37,7 +39,16 @@ function getInitials(account: AuthAccount | null) {
   return `${parts[0]?.[0] ?? "P"}${parts[1]?.[0] ?? "D"}`.toUpperCase();
 }
 
-export function BackOfficeShell({ activeItem = "dashboard", children }: BackOfficeShellProps) {
+function hasPermission(account: AuthAccount | null, permission: string) {
+  return account?.role === "owner" || account?.role === "partner" || account?.permissions?.includes(permission) === true;
+}
+
+export function BackOfficeShell({
+  activeItem = "dashboard",
+  requiredPermission,
+  sectionSidebar,
+  children,
+}: BackOfficeShellProps) {
   const router = useRouter();
   const [theme, setTheme] = useState<PayDeskTheme>("light");
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
@@ -68,6 +79,14 @@ export function BackOfficeShell({ activeItem = "dashboard", children }: BackOffi
     });
   }, [router]);
 
+  useEffect(() => {
+    if (!isReady || !requiredPermission || hasPermission(account, requiredPermission)) {
+      return;
+    }
+
+    router.replace("/dashboard");
+  }, [account, isReady, requiredPermission, router]);
+
   const shellStyles = useMemo(() => {
     const isDark = theme === "dark";
 
@@ -97,6 +116,16 @@ export function BackOfficeShell({ activeItem = "dashboard", children }: BackOffi
 
   const typeConfig = getStoreTypeConfig(selectedStore);
   const status = formatStatus(selectedStore);
+
+  if (requiredPermission && !hasPermission(account, requiredPermission)) {
+    return (
+      <main className={`grid min-h-dvh place-items-center ${shellStyles.screen}`}>
+        <div className={`rounded-[8px] border px-5 py-4 text-sm font-bold ${shellStyles.header}`}>
+          Checking permissions...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className={`min-h-dvh ${shellStyles.screen}`}>
@@ -160,8 +189,12 @@ export function BackOfficeShell({ activeItem = "dashboard", children }: BackOffi
             </div>
           </header>
 
-          <div className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-            {children({ theme, account, selectedStore })}
+          <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
+            {sectionSidebar?.({ theme, account, selectedStore })}
+
+            <div className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+              {children({ theme, account, selectedStore })}
+            </div>
           </div>
 
           {ENABLE_LIVE_SUPPORT ? (

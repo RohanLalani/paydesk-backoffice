@@ -60,8 +60,10 @@ export default function BillingPage() {
   const styles = useMemo(() => billingStyles[theme], [theme]);
 
   useEffect(() => {
-    setTheme(getStoredTheme());
-    setPendingStore(readPendingStore());
+    queueMicrotask(() => {
+      setTheme(getStoredTheme());
+      setPendingStore(readPendingStore());
+    });
   }, []);
 
   return (

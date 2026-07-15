@@ -173,18 +173,22 @@ export function StoreSelector() {
   }
 
   useEffect(() => {
-    setTheme(getStoredTheme());
-    setCanCreate(hasCreatePermission());
-    setDisplayName(getDisplayName());
-    const savedSort = window.localStorage.getItem(STORE_SORT_KEY);
-    setSortOption(isStoreSortOption(savedSort) ? savedSort : "recently_added");
+    queueMicrotask(() => {
+      setTheme(getStoredTheme());
+      setCanCreate(hasCreatePermission());
+      setDisplayName(getDisplayName());
+      const savedSort = window.localStorage.getItem(STORE_SORT_KEY);
+      setSortOption(isStoreSortOption(savedSort) ? savedSort : "recently_added");
+    });
 
     if (!getToken()) {
       router.replace("/login");
       return;
     }
 
-    void loadStores();
+    queueMicrotask(() => {
+      void loadStores();
+    });
   }, [router]);
 
   const visibleStores = useMemo(() => {

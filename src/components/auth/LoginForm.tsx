@@ -112,7 +112,9 @@ export function LoginForm() {
   const styles = useMemo(() => themeStyles[theme], [theme]);
 
   useEffect(() => {
-    setTheme(getStoredTheme());
+    queueMicrotask(() => {
+      setTheme(getStoredTheme());
+    });
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
