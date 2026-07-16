@@ -7,6 +7,7 @@ export type ProductReference = {
   id: string;
   name: string;
   rate?: number;
+  defaultUnitRetail?: string;
   defaultTaxId?: string | null;
   defaultTax?: ProductReference | null;
   defaultAllowEbt?: boolean;
@@ -71,6 +72,52 @@ export type DepartmentCollection = {
   limit: number;
 };
 
+export type PriceGroup = {
+  id: string;
+  storeId: string;
+  name: string;
+  description: string | null;
+  defaultUnitRetail: string;
+  mismatchedItemCount: number;
+  mismatchCountUpdatedAt: string | null;
+  productCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PriceGroupProduct = {
+  id: string;
+  barcode: string;
+  name: string;
+  departmentName: string | null;
+  unitRetail: number;
+  defaultUnitRetail: string;
+  isActive: boolean;
+  matchesDefaultUnitRetail: boolean;
+};
+
+export type CreatePriceGroupInput = {
+  name: string;
+  description?: string | null;
+  defaultUnitRetail: string;
+  isActive: boolean;
+};
+
+export type UpdatePriceGroupInput = Partial<CreatePriceGroupInput>;
+
+export type PriceGroupCollection = {
+  items: PriceGroup[];
+  total: number;
+};
+
+export type PriceGroupProductsCollection = {
+  items: PriceGroupProduct[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 export type ProductRecord = {
   id: string;
   barcode: string;
@@ -108,6 +155,7 @@ export type ProductRecord = {
   departmentId: string;
   department?: ProductReference | null;
   priceGroupId: string | null;
+  priceGroup?: ProductReference | null;
   productCategoryId: string | null;
   taxId: string;
   updatedAt?: string;
@@ -209,6 +257,59 @@ export function getProductCategories(storeId: string) {
 
 export function getPriceGroups(storeId: string) {
   return apiClient<ProductReference[]>(`/product/price-group/store/${storeId}`);
+}
+
+export function getStorePriceGroups(storeId: string, query: { active?: boolean; search?: string } = {}) {
+  const params = new URLSearchParams();
+
+  if (query.active !== undefined) {
+    params.set("active", String(query.active));
+  }
+
+  if (query.search) {
+    params.set("search", query.search);
+  }
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiClient<PriceGroupCollection>(`/stores/${storeId}/price-groups${suffix}`);
+}
+
+export function getStorePriceGroup(storeId: string, priceGroupId: string) {
+  return apiClient<PriceGroup>(`/stores/${storeId}/price-groups/${priceGroupId}`);
+}
+
+export function createPriceGroup(storeId: string, payload: CreatePriceGroupInput) {
+  return apiClient<PriceGroup>(`/stores/${storeId}/price-groups`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updatePriceGroup(storeId: string, priceGroupId: string, payload: UpdatePriceGroupInput) {
+  return apiClient<PriceGroup>(`/stores/${storeId}/price-groups/${priceGroupId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function getPriceGroupProducts(
+  storeId: string,
+  priceGroupId: string,
+  query: { search?: string; match?: "all" | "matches" | "mismatches"; page?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 100),
+    match: query.match ?? "all",
+  });
+
+  if (query.search) {
+    params.set("search", query.search);
+  }
+
+  return apiClient<PriceGroupProductsCollection>(
+    `/stores/${storeId}/price-groups/${priceGroupId}/products?${params.toString()}`,
+  );
 }
 
 export function getTaxes(storeId: string) {

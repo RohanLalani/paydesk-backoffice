@@ -139,6 +139,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [priceGroupDefaultMessage, setPriceGroupDefaultMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [repeatPreviousValues, setRepeatPreviousValues] = useState(false);
@@ -204,6 +205,22 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
   function updateField<K extends keyof ItemFormState>(field: K, value: ItemFormState[K]) {
     setForm((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
+    if (field === "unitRetail") setPriceGroupDefaultMessage("");
+  }
+
+  function handlePriceGroupChange(priceGroupId: string) {
+    const priceGroup = priceGroups.find((item) => item.id === priceGroupId);
+
+    setForm((current) => ({
+      ...current,
+      priceGroupId,
+      ...(priceGroup?.defaultUnitRetail ? { unitRetail: priceGroup.defaultUnitRetail } : {}),
+    }));
+    setFieldErrors((current) => ({ ...current, priceGroupId: undefined, unitRetail: undefined, form: undefined }));
+    setPriceGroupDefaultMessage(priceGroup ? `Defaulted from price group: ${priceGroup.name}.` : "");
+    if (mode === "edit" && priceGroup) {
+      setMessage("Unit Retail was updated from the selected price group.");
+    }
   }
 
   function handleDepartmentChange(departmentId: string) {
@@ -261,6 +278,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
 
       if (result.found) {
         loadProduct(result.product);
+        setPriceGroupDefaultMessage("");
         setMessage("Existing item loaded.");
       } else {
         const repeatedValues = repeatPreviousValues && repeatTemplate
@@ -336,8 +354,12 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     if (product.department && !departments.some((item) => item.id === product.departmentId)) {
       setDepartments((current) => sortRefs([...current, { ...product.department!, isActive: false }]));
     }
+    if (product.priceGroup && product.priceGroupId && !priceGroups.some((item) => item.id === product.priceGroupId)) {
+      setPriceGroups((current) => sortRefs([...current, { ...product.priceGroup!, name: `${product.priceGroup!.name} (Inactive)`, isActive: false }]));
+    }
 
     setForm(productToForm(product));
+    setPriceGroupDefaultMessage("");
     setMode("edit");
     setProductId(product.id);
     setUpdatedAt(product.updatedAt ?? null);
@@ -352,6 +374,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setUpdatedAt(null);
     setMessage("");
     setError("");
+    setPriceGroupDefaultMessage("");
     setFieldErrors({});
     setHasSubmitted(false);
     queueMicrotask(() => barcodeRef.current?.focus());
@@ -523,14 +546,14 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
             ]} />
             <SelectField label="Department" value={form.departmentId} onChange={handleDepartmentChange} error={fieldErrors.departmentId} inputClass={inputClass} required options={departments.map((item) => [item.id, `${item.name}${item.isActive === false ? " (Inactive)" : ""}`])} placeholder="Select department" />
             <SelectField label="Product category" value={form.productCategoryId} onChange={(value) => updateField("productCategoryId", value)} inputClass={inputClass} options={categories.map((item) => [item.id, item.name])} placeholder="None" />
-            <SelectField label="Price group" value={form.priceGroupId} onChange={(value) => updateField("priceGroupId", value)} inputClass={inputClass} options={priceGroups.map((item) => [item.id, item.name])} placeholder="None" />
+            <SelectField label="Price group" value={form.priceGroupId} onChange={handlePriceGroupChange} inputClass={inputClass} options={priceGroups.map((item) => [item.id, item.name])} placeholder="None" />
             <ToggleRow className="md:col-span-2" label="Active item" helper="Available for sale, lookup, and product workflows." checked={form.isActive} onChange={(value) => updateField("isActive", value)} />
           </div>
         </FormSectionCard>
 
         <FormSectionCard title="Pricing and Cost" subtitle="Retail, case cost, discounts, and margin defaults." cardClass={cardClass} className="xl:col-span-12">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <TextField label="Unit retail" value={form.unitRetail} onChange={(value) => updateField("unitRetail", value)} error={fieldErrors.unitRetail} inputClass={inputClass} required />
+            <TextField label="Unit retail" value={form.unitRetail} onChange={(value) => updateField("unitRetail", value)} error={fieldErrors.unitRetail} inputClass={inputClass} helperText={priceGroupDefaultMessage || undefined} required />
             <TextField label="Online retail price" value={form.onlineRetailPrice} onChange={(value) => updateField("onlineRetailPrice", value)} error={fieldErrors.onlineRetailPrice} inputClass={inputClass} />
             <TextField label="Units per case" value={form.unitsPerCase} onChange={(value) => updateField("unitsPerCase", value)} error={fieldErrors.unitsPerCase} inputClass={inputClass} required />
             <TextField label="Case cost" value={form.caseCost} onChange={(value) => updateField("caseCost", value)} error={fieldErrors.caseCost} inputClass={inputClass} />
