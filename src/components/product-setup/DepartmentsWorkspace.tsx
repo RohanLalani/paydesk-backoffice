@@ -152,7 +152,7 @@ function DepartmentsWorkspaceContent({
   canEdit: boolean;
 }) {
   const isDark = theme === "dark";
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [taxes, setTaxes] = useState<ProductReference[]>([]);
@@ -338,112 +338,111 @@ function DepartmentsWorkspaceContent({
         {!canEdit ? <Alert tone="warning" title="You do not have permission to manage departments." /> : null}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.38fr)_minmax(0,0.62fr)] xl:items-start">
-        <div ref={formRef} className={`rounded-[8px] border p-5 ${cardClass}`}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold tracking-normal">
-                {editingDepartment ? "Edit Department" : "Create Department"}
-              </h2>
-              <p className={`mt-1 text-sm font-semibold leading-6 ${mutedClass}`}>
-                {editingDepartment ? "Update this department's setup." : "Add a department for products and POS workflows."}
-              </p>
-            </div>
-            {editingDepartment ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                disabled={isSaving}
-                className={`inline-flex h-9 items-center rounded-[8px] border px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
-              >
-                Cancel Edit
-              </button>
-            ) : null}
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+        <DepartmentFormSection
+          title="Department Details"
+          subtitle={editingDepartment ? "Update this department's core setup." : "Add the core setup for products and POS workflows."}
+          className={cardClass}
+          mutedClass={mutedClass}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Department name" error={fieldErrors.name} helper="Used to group products in the catalog and POS.">
+              <input ref={nameInputRef} value={form.name} onChange={(event) => updateForm("name", event.target.value)} disabled={!canEdit || isSaving} placeholder="e.g. Beverages" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+            </Field>
+            <Field label="POS department number" error={fieldErrors.posDepartmentNumber} helper="Controls POS card order and report line number.">
+              <input value={form.posDepartmentNumber} onChange={(event) => updateForm("posDepartmentNumber", event.target.value)} disabled={!canEdit || isSaving} inputMode="numeric" placeholder="1" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+            </Field>
+            <Field label="Department type" error={fieldErrors.type}>
+              <select value={form.type} onChange={(event) => updateForm("type", event.target.value as DepartmentFormState["type"])} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                {departmentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </Field>
+            <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax rate before creating a department." : undefined}>
+              <select value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                <option value="">Select tax</option>
+                {taxes.map((tax) => (
+                  <option key={tax.id} value={tax.id}>
+                    {tax.rate === undefined ? tax.name : `${tax.name} - ${Number(tax.rate * 100).toFixed(2)}%`}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Minimum age" error={fieldErrors.minimumAge}>
+              <select value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                {minimumAges.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </Field>
           </div>
+        </DepartmentFormSection>
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-5">
-            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
-              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Department Details</h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Department name" error={fieldErrors.name} helper="Used to group products in the catalog and POS.">
-                  <input ref={nameInputRef} value={form.name} onChange={(event) => updateForm("name", event.target.value)} disabled={!canEdit || isSaving} placeholder="e.g. Beverages" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
-                </Field>
-                <Field label="POS department number" error={fieldErrors.posDepartmentNumber} helper="Controls POS card order and report line number.">
-                  <input value={form.posDepartmentNumber} onChange={(event) => updateForm("posDepartmentNumber", event.target.value)} disabled={!canEdit || isSaving} inputMode="numeric" placeholder="1" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
-                </Field>
-                <Field label="Department type" error={fieldErrors.type}>
-                  <select value={form.type} onChange={(event) => updateForm("type", event.target.value as DepartmentFormState["type"])} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
-                    {departmentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax rate before creating a department." : undefined}>
-                  <select value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
-                    <option value="">Select tax</option>
-                    {taxes.map((tax) => (
-                      <option key={tax.id} value={tax.id}>
-                        {tax.rate === undefined ? tax.name : `${tax.name} - ${Number(tax.rate * 100).toFixed(2)}%`}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Minimum age" error={fieldErrors.minimumAge}>
-                  <select value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
-                    {minimumAges.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </Field>
-              </div>
-            </div>
+        <DepartmentFormSection
+          title="Pricing and Ring-Up Defaults"
+          subtitle="Set optional product defaults and manual ring-up guardrails."
+          className={cardClass}
+          mutedClass={mutedClass}
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Default retail margin" error={fieldErrors.defaultRetailMargin} helper="Optional percentage used as a product default.">
+              <input value={form.defaultRetailMargin} onChange={(event) => updateForm("defaultRetailMargin", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="30.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+            </Field>
+            <Field label="Minimum ring-up amount" error={fieldErrors.minimumRingUpAmount}>
+              <input value={form.minimumRingUpAmount} onChange={(event) => updateForm("minimumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="0.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+            </Field>
+            <Field label="Maximum ring-up amount" error={fieldErrors.maximumRingUpAmount}>
+              <input value={form.maximumRingUpAmount} onChange={(event) => updateForm("maximumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="999.99" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+            </Field>
+          </div>
+        </DepartmentFormSection>
 
-            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
-              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Pricing and Ring-Up Defaults</h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                <Field label="Default retail margin" error={fieldErrors.defaultRetailMargin} helper="Optional percentage used as a product default.">
-                  <input value={form.defaultRetailMargin} onChange={(event) => updateForm("defaultRetailMargin", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="30.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
-                </Field>
-                <Field label="Minimum ring-up amount" error={fieldErrors.minimumRingUpAmount}>
-                  <input value={form.minimumRingUpAmount} onChange={(event) => updateForm("minimumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="0.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
-                </Field>
-                <Field label="Maximum ring-up amount" error={fieldErrors.maximumRingUpAmount}>
-                  <input value={form.maximumRingUpAmount} onChange={(event) => updateForm("maximumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="999.99" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
-                </Field>
-              </div>
-            </div>
+        <DepartmentFormSection
+          title="Department Behavior"
+          subtitle="Choose the default sales, inventory, and POS behavior for this department."
+          className={cardClass}
+          mutedClass={mutedClass}
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ToggleRow label="Track inventory" helper="Products in this department track on-hand quantities by default." checked={form.trackInventory} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("trackInventory", checked)} />
+            <ToggleRow label="Allow negative inventory sales" helper="Allow sales when tracked inventory is below zero." checked={form.allowNegativeInventorySales} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowNegativeInventorySales", checked)} />
+            <ToggleRow label="Allow EBT" helper="Products in this department are EBT eligible by default." checked={form.allowEbt} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowEbt", checked)} />
+            <ToggleRow label="Allow manual ring-up" helper="Allow cashiers to enter a department sale without selecting a product." checked={form.allowManualRingUp} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowManualRingUp", checked)} />
+            <ToggleRow label="On POS" helper="Show this department as a selectable department on the POS." checked={form.onPos} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("onPos", checked)} />
+            <ToggleRow label="Active department" helper="Allow this department to be used for new product assignments." checked={form.isActive} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("isActive", checked)} />
+          </div>
+        </DepartmentFormSection>
 
-            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
-              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Department Behavior</h3>
-              <div className="mt-4 space-y-4">
-                <ToggleRow label="Track inventory" helper="Products in this department track on-hand quantities by default." checked={form.trackInventory} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("trackInventory", checked)} />
-                <ToggleRow label="Allow negative inventory sales" helper="Allow sales when tracked inventory is below zero." checked={form.allowNegativeInventorySales} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowNegativeInventorySales", checked)} />
-                <ToggleRow label="Allow EBT" helper="Products in this department are EBT eligible by default." checked={form.allowEbt} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowEbt", checked)} />
-                <ToggleRow label="Allow manual ring-up" helper="Allow cashiers to enter a department sale without selecting a product." checked={form.allowManualRingUp} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowManualRingUp", checked)} />
-                <ToggleRow label="On POS" helper="Show this department as a selectable department on the POS." checked={form.onPos} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("onPos", checked)} />
-                <ToggleRow label="Active department" helper="Allow this department to be used for new product assignments." checked={form.isActive} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("isActive", checked)} />
-              </div>
-            </div>
-
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={resetForm}
-                disabled={isSaving}
-                className={`inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
-              >
-                <RotateCcw className="size-4" aria-hidden="true" />
-                Reset
-              </button>
-              <button
-                type="submit"
-                disabled={!canEdit || isSaving || !taxes.length}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35"
-              >
-                {isSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-                {isSaving ? "Saving..." : editingDepartment ? "Update Department" : "Save Department"}
-              </button>
-            </div>
-          </form>
+        <div className={`flex flex-col-reverse gap-3 rounded-[8px] border p-6 sm:flex-row sm:justify-end ${cardClass}`}>
+          {editingDepartment ? (
+            <button
+              type="button"
+              onClick={resetForm}
+              disabled={isSaving}
+              className={`inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
+            >
+              <X className="size-4" aria-hidden="true" />
+              Cancel Edit
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={resetForm}
+            disabled={isSaving}
+            className={`inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Reset
+          </button>
+          <button
+            type="submit"
+            disabled={!canEdit || isSaving || !taxes.length}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35"
+          >
+            {isSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+            {isSaving ? "Saving..." : editingDepartment ? "Update Department" : "Save Department"}
+          </button>
         </div>
+      </form>
 
-        <div className={`rounded-[8px] border p-5 ${cardClass}`}>
+      <div className={`rounded-[8px] border p-6 ${cardClass}`}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2 className="text-lg font-bold tracking-normal">Existing Departments</h2>
@@ -495,7 +494,7 @@ function DepartmentsWorkspaceContent({
               </div>
             ) : visibleDepartments.length ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-[1120px] text-left text-sm">
                   <thead className={isDark ? "bg-white/[0.04] text-slate-400" : "bg-[#f0edff] text-slate-600"}>
                     <tr>
                       <TableHeader>POS #</TableHeader>
@@ -583,7 +582,6 @@ function DepartmentsWorkspaceContent({
               </div>
             )}
           </div>
-        </div>
       </div>
 
       {deactivateTarget ? (
@@ -595,6 +593,30 @@ function DepartmentsWorkspaceContent({
           onConfirm={() => void setDepartmentStatus(deactivateTarget, false)}
         />
       ) : null}
+    </section>
+  );
+}
+
+function DepartmentFormSection({
+  title,
+  subtitle,
+  className,
+  mutedClass,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  className: string;
+  mutedClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`rounded-[8px] border p-6 ${className}`}>
+      <div>
+        <h2 className="text-lg font-bold tracking-normal">{title}</h2>
+        <p className={`mt-1.5 text-sm font-semibold leading-6 ${mutedClass}`}>{subtitle}</p>
+      </div>
+      <div className="mt-6">{children}</div>
     </section>
   );
 }
