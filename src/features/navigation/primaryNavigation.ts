@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { inventoryNavigation } from "@/src/features/inventory/navigation";
 import { logsNavigation } from "@/src/features/logs/navigation";
+import { productSetupNavigation } from "@/src/features/product-setup/navigation";
 import { productNavigation } from "@/src/features/products/navigation";
 import type { AuthAccount } from "@/src/features/auth/types";
 import type { StoreCapabilities } from "@/src/features/stores/types";
@@ -33,7 +34,7 @@ export type BackOfficeNavKey =
   | "inventory"
   | "sendToPos"
   | "storeSettings"
-  | "departments"
+  | "productSetup"
   | "permissions"
   | "loyalty"
   | "services"
@@ -152,12 +153,15 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     match: ["/settings/store"],
   },
   {
-    key: "departments",
-    label: "Departments",
-    href: "/departments",
+    key: "productSetup",
+    label: "Product Setup",
+    href: "/product-setup/departments",
     icon: LayoutGrid,
     category: "setup",
+    match: ["/product-setup", "/departments"],
     permission: "manage_products",
+    secondaryLabel: "Product Setup",
+    secondaryNavigation: productSetupNavigation,
   },
   {
     key: "permissions",

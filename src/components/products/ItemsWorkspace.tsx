@@ -166,7 +166,10 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       })
       .catch((apiError: unknown) => {
         if (!isMounted) return;
-        setError(apiError instanceof Error ? apiError.message : "Reference data could not be loaded.");
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Product reference data request failed", apiError);
+        }
+        setError("Reference data could not be loaded. Please refresh and try again.");
       })
       .finally(() => {
         if (isMounted) setReferenceLoading(false);
@@ -305,6 +308,10 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
   }
 
   function loadProduct(product: ProductRecord) {
+    if (product.department && !departments.some((item) => item.id === product.departmentId)) {
+      setDepartments((current) => sortRefs([...current, { ...product.department!, isActive: false }]));
+    }
+
     setForm(productToForm(product));
     setMode("edit");
     setProductId(product.id);
@@ -468,7 +475,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
               tone="warning"
               title="No active departments exist"
               body="Create a department before saving items."
-              actionHref="/departments"
+              actionHref="/product-setup/departments"
               actionLabel="Open Departments"
             />
           ) : null}

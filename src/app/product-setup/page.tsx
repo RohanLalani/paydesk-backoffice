@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function DepartmentsPage() {
+export default function ProductSetupPage() {
   redirect("/product-setup/departments");
 }

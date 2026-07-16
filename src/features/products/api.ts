@@ -8,6 +8,33 @@ export type ProductReference = {
   name: string;
   rate?: number;
   defaultAllowEbt?: boolean;
+  isActive?: boolean;
+};
+
+export type Department = {
+  id: string;
+  storeId: string;
+  name: string;
+  defaultAllowEbt: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  productCount?: number;
+};
+
+export type CreateDepartmentInput = {
+  name: string;
+  defaultAllowEbt: boolean;
+  isActive: boolean;
+};
+
+export type UpdateDepartmentInput = Partial<CreateDepartmentInput>;
+
+export type DepartmentCollection = {
+  items: Department[];
+  total: number;
+  page: number;
+  limit: number;
 };
 
 export type ProductRecord = {
@@ -45,6 +72,7 @@ export type ProductRecord = {
   isActive: boolean;
   storeId: string;
   departmentId: string;
+  department?: ProductReference | null;
   priceGroupId: string | null;
   productCategoryId: string | null;
   taxId: string;
@@ -87,8 +115,56 @@ export async function updateProduct(storeId: string, productId: string, payload:
   });
 }
 
-export function getDepartments(storeId: string) {
-  return apiClient<ProductReference[]>(`/product/department/store/${storeId}`);
+function normalizeDepartmentCollection(response: Department[] | DepartmentCollection) {
+  return Array.isArray(response) ? response : response.items;
+}
+
+function departmentSearchParams(query: { active?: boolean; search?: string; limit?: number } = {}) {
+  const params = new URLSearchParams({
+    sort: "name",
+    order: "asc",
+    limit: String(query.limit ?? 100),
+  });
+
+  if (query.active !== undefined) {
+    params.set("active", String(query.active));
+  }
+
+  if (query.search) {
+    params.set("search", query.search);
+  }
+
+  return params;
+}
+
+export async function getDepartments(storeId: string) {
+  const response = await apiClient<Department[] | DepartmentCollection>(
+    `/stores/${storeId}/departments?${departmentSearchParams({ active: true }).toString()}`,
+  );
+
+  return normalizeDepartmentCollection(response);
+}
+
+export async function getStoreDepartments(storeId: string, query: { active?: boolean; search?: string } = {}) {
+  const response = await apiClient<Department[] | DepartmentCollection>(
+    `/stores/${storeId}/departments?${departmentSearchParams(query).toString()}`,
+  );
+
+  return normalizeDepartmentCollection(response);
+}
+
+export function createDepartment(storeId: string, payload: CreateDepartmentInput) {
+  return apiClient<Department>(`/stores/${storeId}/departments`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateDepartment(storeId: string, departmentId: string, payload: UpdateDepartmentInput) {
+  return apiClient<Department>(`/stores/${storeId}/departments/${departmentId}`, {
+    method: "PATCH",
+    body: payload,
+  });
 }
 
 export function getProductCategories(storeId: string) {

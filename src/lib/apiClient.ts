@@ -84,7 +84,7 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     throw new ApiClientError(
-      getErrorMessage(payload) ?? "Sign in failed. Please check your details and try again.",
+      getErrorMessage(payload) ?? "Request failed. Please try again.",
       response.status,
     );
   }
