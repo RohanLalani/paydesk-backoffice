@@ -7,15 +7,38 @@ export type ProductReference = {
   id: string;
   name: string;
   rate?: number;
+  defaultTaxId?: string | null;
+  defaultTax?: ProductReference | null;
   defaultAllowEbt?: boolean;
+  allowEbt?: boolean;
+  trackInventory?: boolean;
+  allowNegativeInventorySales?: boolean;
+  minimumAge?: DepartmentMinimumAge;
+  defaultRetailMargin?: number | null;
   isActive?: boolean;
 };
+
+export type DepartmentType = "merchandise" | "lottery" | "fuel" | "misc_services";
+export type DepartmentMinimumAge = "none" | "age_18" | "age_18_time_sensitive" | "age_21" | "age_21_time_sensitive";
 
 export type Department = {
   id: string;
   storeId: string;
   name: string;
+  posDepartmentNumber: number;
+  type: DepartmentType;
+  defaultTaxId: string | null;
+  defaultTax?: ProductReference | null;
+  minimumAge: DepartmentMinimumAge;
+  defaultRetailMargin: number | null;
+  minimumRingUpAmount: number | null;
+  maximumRingUpAmount: number | null;
+  trackInventory: boolean;
+  allowNegativeInventorySales: boolean;
+  allowEbt: boolean;
   defaultAllowEbt: boolean;
+  allowManualRingUp: boolean;
+  onPos: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -24,7 +47,18 @@ export type Department = {
 
 export type CreateDepartmentInput = {
   name: string;
-  defaultAllowEbt: boolean;
+  posDepartmentNumber: number;
+  type: DepartmentType;
+  defaultTaxId: string;
+  minimumAge: DepartmentMinimumAge;
+  defaultRetailMargin: number | null;
+  minimumRingUpAmount: number | null;
+  maximumRingUpAmount: number | null;
+  trackInventory: boolean;
+  allowNegativeInventorySales: boolean;
+  allowEbt: boolean;
+  allowManualRingUp: boolean;
+  onPos: boolean;
   isActive: boolean;
 };
 
@@ -89,6 +123,8 @@ export type ProductPayload = Omit<
   | "margin"
   | "currentQuantity"
   | "updatedAt"
+  | "taxId"
+  | "department"
 >;
 
 export type BarcodeLookupResponse =

@@ -206,6 +206,31 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setFieldErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
   }
 
+  function handleDepartmentChange(departmentId: string) {
+    const department = departments.find((item) => item.id === departmentId);
+
+    setForm((current) => ({
+      ...current,
+      departmentId,
+      ...(mode === "create" && department
+        ? {
+            taxId: department.defaultTaxId ?? "",
+            allowEbt: department.allowEbt ?? department.defaultAllowEbt ?? current.allowEbt,
+            trackInventory: department.trackInventory ?? current.trackInventory,
+            allowNegativeInventory: department.allowNegativeInventorySales ?? current.allowNegativeInventory,
+            defaultMargin:
+              department.defaultRetailMargin === null || department.defaultRetailMargin === undefined
+                ? current.defaultMargin
+                : String(department.defaultRetailMargin),
+            minimumAge: departmentMinimumAgeToItemValue(department.minimumAge) ?? current.minimumAge,
+          }
+        : department
+          ? { taxId: department.defaultTaxId ?? current.taxId }
+          : {}),
+    }));
+    setFieldErrors((current) => ({ ...current, departmentId: undefined, taxId: undefined, form: undefined }));
+  }
+
   function handleRepeatPreviousChange(checked: boolean) {
     setRepeatPreviousValues(checked);
 
@@ -276,7 +301,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     event.preventDefault();
     if (!canEdit || isSaving) return;
     setHasSubmitted(true);
-    const validation = validateForm(form, departments.length > 0, taxes.length > 0);
+    const validation = validateForm(form, departments.length > 0);
     setFieldErrors(validation.errors);
 
     if (!validation.ok) {
@@ -409,7 +434,9 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     ? "border-slate-400/15 bg-white/[0.04] text-[#f4f1ff] placeholder:text-slate-500 disabled:bg-white/[0.02] disabled:text-slate-500"
     : "border-[#ded8f3] bg-white text-slate-950 placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-500";
   const mutedClass = isDark ? "text-slate-400" : "text-slate-500";
-  const canSave = canEdit && !referenceLoading && departments.length > 0 && taxes.length > 0;
+  const selectedDepartment = departments.find((item) => item.id === form.departmentId);
+  const inheritedTax = selectedDepartment?.defaultTax ?? taxes.find((item) => item.id === selectedDepartment?.defaultTaxId);
+  const canSave = canEdit && !referenceLoading && departments.length > 0 && Boolean(selectedDepartment?.defaultTaxId || form.taxId);
   const validationCount = Object.values(fieldErrors).filter(Boolean).length;
   const modeTone = mode === "edit" ? "bg-emerald-500/15 text-emerald-500" : mode === "create" ? "bg-sky-500/15 text-sky-500" : "bg-[#f0edff] text-[#4f2df2]";
 
@@ -494,7 +521,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
               ["lottery", "Lottery"],
               ["other", "Other"],
             ]} />
-            <SelectField label="Department" value={form.departmentId} onChange={(value) => updateField("departmentId", value)} error={fieldErrors.departmentId} inputClass={inputClass} required options={departments.map((item) => [item.id, item.name])} placeholder="Select department" />
+            <SelectField label="Department" value={form.departmentId} onChange={handleDepartmentChange} error={fieldErrors.departmentId} inputClass={inputClass} required options={departments.map((item) => [item.id, `${item.name}${item.isActive === false ? " (Inactive)" : ""}`])} placeholder="Select department" />
             <SelectField label="Product category" value={form.productCategoryId} onChange={(value) => updateField("productCategoryId", value)} inputClass={inputClass} options={categories.map((item) => [item.id, item.name])} placeholder="None" />
             <SelectField label="Price group" value={form.priceGroupId} onChange={(value) => updateField("priceGroupId", value)} inputClass={inputClass} options={priceGroups.map((item) => [item.id, item.name])} placeholder="None" />
             <ToggleRow className="md:col-span-2" label="Active item" helper="Available for sale, lookup, and product workflows." checked={form.isActive} onChange={(value) => updateField("isActive", value)} />
@@ -553,7 +580,13 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
             <div>
               <p className={`mb-3 text-xs font-extrabold uppercase tracking-[0.08em] ${mutedClass}`}>Tax configuration</p>
               <div className="grid gap-4 md:grid-cols-2">
-                <SelectField label="Tax" value={form.taxId} onChange={(value) => updateField("taxId", value)} error={fieldErrors.taxId} inputClass={inputClass} required options={taxes.map((item) => [item.id, item.rate === undefined ? item.name : `${item.name} (${Number(item.rate * 100).toFixed(2)}%)`])} placeholder="Select tax" />
+                <div className="md:col-span-2">
+                  <p className={`text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>Tax inherited from department</p>
+                  <div className={`mt-2 flex min-h-12 items-center rounded-[8px] border px-4 text-sm font-bold ${inputClass}`}>
+                    {inheritedTax ? `${inheritedTax.name}${inheritedTax.rate === undefined ? "" : ` (${Number(inheritedTax.rate * 100).toFixed(2)}%)`}` : "Select a department with a default tax"}
+                  </div>
+                  {fieldErrors.taxId ? <p className="mt-2 text-xs font-bold text-red-500">{fieldErrors.taxId}</p> : null}
+                </div>
                 <SelectField label="Tax style" value={form.taxStyle} onChange={(value) => updateField("taxStyle", value as TaxStyle)} inputClass={inputClass} required options={[
                   ["post_discount", "Post discount"],
                   ["pre_discount", "Pre discount"],
@@ -903,6 +936,19 @@ function sanitizeRepeatTemplate(
   };
 }
 
+function departmentMinimumAgeToItemValue(value: ProductReference["minimumAge"]) {
+  switch (value) {
+    case "age_18":
+    case "age_18_time_sensitive":
+      return "18";
+    case "age_21":
+    case "age_21_time_sensitive":
+      return "21";
+    default:
+      return null;
+  }
+}
+
 function buildPayload(storeId: string, form: ItemFormState): ProductPayload {
   const validatedBarcode = validateBarcodeInput(form.barcode);
 
@@ -923,7 +969,6 @@ function buildPayload(storeId: string, form: ItemFormState): ProductPayload {
     maxInventory: parseIntStrict(form.maxInventory),
     minInventory: parseIntStrict(form.minInventory),
     minimumAge: parseIntStrict(form.minimumAge),
-    taxId: form.taxId,
     nacsCode: emptyToNull(form.nacsCode),
     nacsCategory: emptyToNull(form.nacsCategory),
     nacsSubCategory: emptyToNull(form.nacsSubCategory),
@@ -940,13 +985,12 @@ function buildPayload(storeId: string, form: ItemFormState): ProductPayload {
   };
 }
 
-function validateForm(form: ItemFormState, hasDepartments: boolean, hasTaxes: boolean) {
+function validateForm(form: ItemFormState, hasDepartments: boolean) {
   const errors: FieldErrors = {};
   const barcode = validateBarcodeInput(form.barcode);
   if (!barcode.ok) errors.barcode = barcode.message;
   if (!form.name.trim()) errors.name = "Description is required.";
   if (!hasDepartments || !form.departmentId) errors.departmentId = "Select a department.";
-  if (!hasTaxes || !form.taxId) errors.taxId = "Select a tax.";
   requireMoney(form.unitRetail, "unitRetail", "Unit retail", errors);
   requirePositiveInt(form.unitsPerCase, "unitsPerCase", "Units per case", errors);
   optionalMoney(form.onlineRetailPrice, "onlineRetailPrice", "Online retail", errors);

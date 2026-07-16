@@ -1,19 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Edit3, LoaderCircle, RotateCcw, Save, Search, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { z } from "zod";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
 import {
   createDepartment,
   getStoreDepartments,
+  getTaxes,
   updateDepartment,
   type Department,
+  type DepartmentMinimumAge,
+  type DepartmentType,
+  type ProductReference,
 } from "@/src/features/products/api";
 
 type DepartmentFormState = {
   name: string;
-  defaultAllowEbt: boolean;
+  posDepartmentNumber: string;
+  type: DepartmentType | "";
+  defaultTaxId: string;
+  minimumAge: DepartmentMinimumAge;
+  defaultRetailMargin: string;
+  minimumRingUpAmount: string;
+  maximumRingUpAmount: string;
+  trackInventory: boolean;
+  allowNegativeInventorySales: boolean;
+  allowEbt: boolean;
+  allowManualRingUp: boolean;
+  onPos: boolean;
   isActive: boolean;
 };
 
@@ -21,9 +36,35 @@ type StatusFilter = "all" | "active" | "inactive";
 
 const defaultForm: DepartmentFormState = {
   name: "",
-  defaultAllowEbt: false,
+  posDepartmentNumber: "",
+  type: "merchandise",
+  defaultTaxId: "",
+  minimumAge: "none",
+  defaultRetailMargin: "",
+  minimumRingUpAmount: "",
+  maximumRingUpAmount: "",
+  trackInventory: true,
+  allowNegativeInventorySales: false,
+  allowEbt: false,
+  allowManualRingUp: false,
+  onPos: true,
   isActive: true,
 };
+
+const departmentTypes = [
+  ["merchandise", "Merchandise"],
+  ["lottery", "Lottery"],
+  ["fuel", "Fuel"],
+  ["misc_services", "Misc. Services"],
+] satisfies Array<[DepartmentType, string]>;
+
+const minimumAges = [
+  ["none", "None"],
+  ["age_18", "18"],
+  ["age_18_time_sensitive", "18 - Time Sensitive"],
+  ["age_21", "21"],
+  ["age_21_time_sensitive", "21 - Time Sensitive"],
+] satisfies Array<[DepartmentMinimumAge, string]>;
 
 const nameSchema = z
   .string()
@@ -39,9 +80,53 @@ const nameSchema = z
 
 const departmentSchema = z.object({
   name: nameSchema,
-  defaultAllowEbt: z.boolean(),
+  posDepartmentNumber: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "POS department number is required.")
+    .transform((value) => Number(value))
+    .pipe(z.number().int().min(1, "POS department number must be at least 1.").max(9999, "POS department number must be 9999 or lower.")),
+  type: z.enum(["merchandise", "lottery", "fuel", "misc_services"], { error: "Department type is required." }),
+  defaultTaxId: z.string().min(1, "Default tax rate is required."),
+  minimumAge: z.enum(["none", "age_18", "age_18_time_sensitive", "age_21", "age_21_time_sensitive"]),
+  defaultRetailMargin: optionalDecimalString("Default retail margin", 4).refine((value) => value === null || (value >= 0 && value <= 100), "Default retail margin must be between 0 and 100."),
+  minimumRingUpAmount: optionalDecimalString("Minimum ring-up amount", 2),
+  maximumRingUpAmount: optionalDecimalString("Maximum ring-up amount", 2),
+  trackInventory: z.boolean(),
+  allowNegativeInventorySales: z.boolean(),
+  allowEbt: z.boolean(),
+  allowManualRingUp: z.boolean(),
+  onPos: z.boolean(),
   isActive: z.boolean(),
-});
+}).refine(
+  (value) =>
+    value.minimumRingUpAmount === null ||
+    value.maximumRingUpAmount === null ||
+    value.minimumRingUpAmount <= value.maximumRingUpAmount,
+  {
+    path: ["maximumRingUpAmount"],
+    message: "Maximum ring-up amount must be greater than or equal to the minimum.",
+  },
+);
+
+function optionalDecimalString(label: string, maxScale: number) {
+  return z
+    .string()
+    .trim()
+    .transform((value) => (value === "" ? null : value))
+    .pipe(
+      z.union([
+        z.null(),
+        z
+          .string()
+          .regex(/^\d+(\.\d+)?$/, `${label} must be a valid number.`)
+          .refine((value) => (value.split(".")[1] ?? "").length <= maxScale, `${label} must have ${maxScale} or fewer decimal places.`)
+          .transform((value) => Number(value))
+          .refine((value) => Number.isFinite(value), `${label} must be finite.`)
+          .refine((value) => value >= 0, `${label} must be zero or greater.`),
+      ]),
+    );
+}
 
 export function DepartmentsWorkspace() {
   return (
@@ -70,9 +155,10 @@ function DepartmentsWorkspaceContent({
   const formRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [taxes, setTaxes] = useState<ProductReference[]>([]);
   const [form, setForm] = useState<DepartmentFormState>(defaultForm);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-  const [fieldError, setFieldError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof DepartmentFormState, string>>>({});
   const [pageError, setPageError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -94,7 +180,12 @@ function DepartmentsWorkspaceContent({
     setPageError("");
 
     try {
-      setDepartments(await getStoreDepartments(storeId));
+      const [departmentItems, taxItems] = await Promise.all([
+        getStoreDepartments(storeId),
+        getTaxes(storeId),
+      ]);
+      setDepartments(departmentItems);
+      setTaxes(taxItems);
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("Departments request failed for", `/stores/${storeId}/departments`, error);
@@ -127,7 +218,7 @@ function DepartmentsWorkspaceContent({
 
   function updateForm<K extends keyof DepartmentFormState>(field: K, value: DepartmentFormState[K]) {
     setForm((current) => ({ ...current, [field]: value }));
-    setFieldError("");
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
     setPageError("");
     setSuccessMessage("");
   }
@@ -136,20 +227,34 @@ function DepartmentsWorkspaceContent({
     if (isSaving) return;
     setForm(defaultForm);
     setEditingDepartment(null);
-    setFieldError("");
+    setFieldErrors({});
     setPageError("");
     setSuccessMessage("");
     queueMicrotask(() => nameInputRef.current?.focus());
   }
 
   function startEdit(department: Department) {
+    if (department.defaultTax && !taxes.some((tax) => tax.id === department.defaultTaxId)) {
+      setTaxes((current) => [...current, { ...department.defaultTax!, name: `${department.defaultTax!.name} (Inactive)` }]);
+    }
     setEditingDepartment(department);
     setForm({
       name: department.name,
-      defaultAllowEbt: department.defaultAllowEbt,
+      posDepartmentNumber: String(department.posDepartmentNumber),
+      type: department.type,
+      defaultTaxId: department.defaultTaxId ?? "",
+      minimumAge: department.minimumAge,
+      defaultRetailMargin: numberInputValue(department.defaultRetailMargin),
+      minimumRingUpAmount: numberInputValue(department.minimumRingUpAmount),
+      maximumRingUpAmount: numberInputValue(department.maximumRingUpAmount),
+      trackInventory: department.trackInventory,
+      allowNegativeInventorySales: department.allowNegativeInventorySales,
+      allowEbt: department.allowEbt,
+      allowManualRingUp: department.allowManualRingUp,
+      onPos: department.onPos,
       isActive: department.isActive,
     });
-    setFieldError("");
+    setFieldErrors({});
     setPageError("");
     setSuccessMessage("");
     queueMicrotask(() => {
@@ -162,14 +267,20 @@ function DepartmentsWorkspaceContent({
     event.preventDefault();
 
     if (!canEdit || isSaving) return;
-    setFieldError("");
+    setFieldErrors({});
     setPageError("");
     setSuccessMessage("");
 
     const parsed = departmentSchema.safeParse(form);
 
     if (!parsed.success) {
-      setFieldError(parsed.error.issues[0]?.message ?? "Department name is invalid.");
+      setFieldErrors(
+        parsed.error.issues.reduce<Partial<Record<keyof DepartmentFormState, string>>>((errors, issue) => {
+          const field = issue.path[0] as keyof DepartmentFormState | undefined;
+          if (field && !errors[field]) errors[field] = issue.message;
+          return errors;
+        }, {}),
+      );
       return;
     }
 
@@ -251,45 +362,64 @@ function DepartmentsWorkspaceContent({
           </div>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-5">
-            <div>
-              <label htmlFor="department-name" className={`text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                Department name <span aria-hidden="true">*</span>
-              </label>
-              <input
-                ref={nameInputRef}
-                id="department-name"
-                value={form.name}
-                onChange={(event) => updateForm("name", event.target.value)}
-                disabled={!canEdit || isSaving}
-                placeholder="e.g. Beverages"
-                aria-invalid={fieldError ? "true" : "false"}
-                aria-describedby={`department-name-helper${fieldError ? " department-name-error" : ""}`}
-                className={`mt-2 h-12 w-full rounded-[8px] border px-4 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}
-              />
-              <p id="department-name-helper" className={`mt-2 text-xs font-semibold leading-5 ${mutedClass}`}>
-                Used to group products in the catalog and POS.
-              </p>
-              {fieldError ? (
-                <p id="department-name-error" className="mt-2 text-xs font-bold text-red-500">
-                  {fieldError}
-                </p>
-              ) : null}
+            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
+              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Department Details</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field label="Department name" error={fieldErrors.name} helper="Used to group products in the catalog and POS.">
+                  <input ref={nameInputRef} value={form.name} onChange={(event) => updateForm("name", event.target.value)} disabled={!canEdit || isSaving} placeholder="e.g. Beverages" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+                </Field>
+                <Field label="POS department number" error={fieldErrors.posDepartmentNumber} helper="Controls POS card order and report line number.">
+                  <input value={form.posDepartmentNumber} onChange={(event) => updateForm("posDepartmentNumber", event.target.value)} disabled={!canEdit || isSaving} inputMode="numeric" placeholder="1" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+                </Field>
+                <Field label="Department type" error={fieldErrors.type}>
+                  <select value={form.type} onChange={(event) => updateForm("type", event.target.value as DepartmentFormState["type"])} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                    {departmentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax rate before creating a department." : undefined}>
+                  <select value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                    <option value="">Select tax</option>
+                    {taxes.map((tax) => (
+                      <option key={tax.id} value={tax.id}>
+                        {tax.rate === undefined ? tax.name : `${tax.name} - ${Number(tax.rate * 100).toFixed(2)}%`}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Minimum age" error={fieldErrors.minimumAge}>
+                  <select value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+                    {minimumAges.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </Field>
+              </div>
             </div>
 
-            <ToggleRow
-              label="Allow EBT by default"
-              helper="New products assigned to this department may inherit EBT eligibility."
-              checked={form.defaultAllowEbt}
-              disabled={!canEdit || isSaving}
-              onChange={(checked) => updateForm("defaultAllowEbt", checked)}
-            />
-            <ToggleRow
-              label="Active department"
-              helper="Inactive departments remain in history but cannot be selected for new products."
-              checked={form.isActive}
-              disabled={!canEdit || isSaving}
-              onChange={(checked) => updateForm("isActive", checked)}
-            />
+            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
+              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Pricing and Ring-Up Defaults</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <Field label="Default retail margin" error={fieldErrors.defaultRetailMargin} helper="Optional percentage used as a product default.">
+                  <input value={form.defaultRetailMargin} onChange={(event) => updateForm("defaultRetailMargin", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="30.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+                </Field>
+                <Field label="Minimum ring-up amount" error={fieldErrors.minimumRingUpAmount}>
+                  <input value={form.minimumRingUpAmount} onChange={(event) => updateForm("minimumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="0.00" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+                </Field>
+                <Field label="Maximum ring-up amount" error={fieldErrors.maximumRingUpAmount}>
+                  <input value={form.maximumRingUpAmount} onChange={(event) => updateForm("maximumRingUpAmount", event.target.value)} disabled={!canEdit || isSaving} inputMode="decimal" placeholder="999.99" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
+                </Field>
+              </div>
+            </div>
+
+            <div className={`rounded-[8px] border p-4 ${nestedClass}`}>
+              <h3 className="text-sm font-extrabold uppercase tracking-[0.06em] text-slate-500">Department Behavior</h3>
+              <div className="mt-4 space-y-4">
+                <ToggleRow label="Track inventory" helper="Products in this department track on-hand quantities by default." checked={form.trackInventory} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("trackInventory", checked)} />
+                <ToggleRow label="Allow negative inventory sales" helper="Allow sales when tracked inventory is below zero." checked={form.allowNegativeInventorySales} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowNegativeInventorySales", checked)} />
+                <ToggleRow label="Allow EBT" helper="Products in this department are EBT eligible by default." checked={form.allowEbt} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowEbt", checked)} />
+                <ToggleRow label="Allow manual ring-up" helper="Allow cashiers to enter a department sale without selecting a product." checked={form.allowManualRingUp} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("allowManualRingUp", checked)} />
+                <ToggleRow label="On POS" helper="Show this department as a selectable department on the POS." checked={form.onPos} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("onPos", checked)} />
+                <ToggleRow label="Active department" helper="Allow this department to be used for new product assignments." checked={form.isActive} disabled={!canEdit || isSaving} onChange={(checked) => updateForm("isActive", checked)} />
+              </div>
+            </div>
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
@@ -303,7 +433,7 @@ function DepartmentsWorkspaceContent({
               </button>
               <button
                 type="submit"
-                disabled={!canEdit || isSaving}
+                disabled={!canEdit || isSaving || !taxes.length}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35"
               >
                 {isSaving ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
@@ -368,26 +498,43 @@ function DepartmentsWorkspaceContent({
                 <table className="min-w-full text-left text-sm">
                   <thead className={isDark ? "bg-white/[0.04] text-slate-400" : "bg-[#f0edff] text-slate-600"}>
                     <tr>
+                      <TableHeader>POS #</TableHeader>
                       <TableHeader>Department</TableHeader>
-                      <TableHeader>Default EBT</TableHeader>
+                      <TableHeader>Type</TableHeader>
+                      <TableHeader>Default Tax</TableHeader>
+                      <TableHeader>Minimum Age</TableHeader>
+                      <TableHeader>On POS</TableHeader>
+                      <TableHeader>Inventory</TableHeader>
+                      <TableHeader>EBT</TableHeader>
                       <TableHeader>Status</TableHeader>
-                      <TableHeader>Products</TableHeader>
-                      <TableHeader>Updated</TableHeader>
                       <TableHeader>Actions</TableHeader>
                     </tr>
                   </thead>
                   <tbody>
                     {visibleDepartments.map((department) => (
                       <tr key={department.id} className={`border-t ${isDark ? "border-slate-400/10" : "border-[#ded8f3]"}`}>
-                        <td className="px-4 py-3 font-bold">{department.name}</td>
+                        <td className={`px-4 py-3 font-extrabold ${mutedClass}`}>{department.posDepartmentNumber}</td>
+                        <td className="px-4 py-3 font-bold">
+                          <div>{department.name}</div>
+                          <div className={`mt-1 text-xs font-semibold ${mutedClass}`}>{department.productCount ?? 0} products</div>
+                        </td>
+                        <td className="px-4 py-3"><Badge tone="neutral">{departmentTypeLabel(department.type)}</Badge></td>
+                        <td className="px-4 py-3 font-semibold">
+                          {department.defaultTax ? `${department.defaultTax.name}${department.defaultTax.rate === undefined ? "" : ` (${Number(department.defaultTax.rate * 100).toFixed(2)}%)`}` : "Configure tax"}
+                        </td>
+                        <td className="px-4 py-3"><Badge tone="neutral">{minimumAgeLabel(department.minimumAge)}</Badge></td>
                         <td className="px-4 py-3">
-                          <Badge tone={department.defaultAllowEbt ? "success" : "neutral"}>{department.defaultAllowEbt ? "Yes" : "No"}</Badge>
+                          <Badge tone={department.onPos ? "success" : "neutral"}>{department.onPos ? "Yes" : "No"}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge tone={department.trackInventory ? "success" : "neutral"}>{department.trackInventory ? "Tracked" : "Not tracked"}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge tone={department.allowEbt ? "success" : "neutral"}>{department.allowEbt ? "Yes" : "No"}</Badge>
                         </td>
                         <td className="px-4 py-3">
                           <Badge tone={department.isActive ? "success" : "warning"}>{department.isActive ? "Active" : "Inactive"}</Badge>
                         </td>
-                        <td className={`px-4 py-3 font-bold ${mutedClass}`}>{department.productCount ?? "—"}</td>
-                        <td className={`px-4 py-3 font-semibold ${mutedClass}`}>{formatDate(department.updatedAt)}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -485,6 +632,27 @@ function ToggleRow({
   );
 }
 
+function Field({
+  label,
+  helper,
+  error,
+  children,
+}: {
+  label: string;
+  helper?: string;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold">{label}</span>
+      <span className="mt-2 block">{children}</span>
+      {helper ? <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{helper}</span> : null}
+      {error ? <span className="mt-2 block text-xs font-bold text-red-500">{error}</span> : null}
+    </label>
+  );
+}
+
 function Alert({ tone, title }: { tone: "success" | "warning" | "error"; title: string }) {
   const Icon = tone === "success" ? CheckCircle2 : AlertCircle;
   const toneClass = {
@@ -515,18 +683,16 @@ function TableHeader({ children }: { children: string }) {
   return <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-[0.06em]">{children}</th>;
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
+function departmentTypeLabel(value: DepartmentType) {
+  return departmentTypes.find(([key]) => key === value)?.[1] ?? value;
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
+function minimumAgeLabel(value: DepartmentMinimumAge) {
+  return minimumAges.find(([key]) => key === value)?.[1] ?? value;
+}
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
+function numberInputValue(value: number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
 }
 
 function DeactivateDialog({
