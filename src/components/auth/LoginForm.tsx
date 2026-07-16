@@ -21,7 +21,7 @@ import {
 } from "@/src/features/auth/api";
 import type { AuthRole } from "@/src/features/auth/types";
 import { saveAuth } from "@/src/lib/authStorage";
-import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
+import { applyThemeToDocument, getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 
 type LoginThemeStyles = {
   screen: string;
@@ -113,7 +113,9 @@ export function LoginForm() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setTheme(getStoredTheme());
+      const storedTheme = getStoredTheme();
+      setTheme(storedTheme);
+      applyThemeToDocument(storedTheme);
     });
   }, []);
 
@@ -151,6 +153,7 @@ export function LoginForm() {
   return (
     <main
       className={`relative flex min-h-dvh w-full items-center justify-center overflow-hidden px-5 py-8 ${styles.screen}`}
+      data-paydesk-theme={theme}
     >
       <div
         aria-hidden="true"

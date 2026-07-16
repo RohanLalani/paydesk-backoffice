@@ -18,7 +18,7 @@ import type { Store } from "@/src/features/stores/types";
 import { clearSelectedStoreStorage, saveSelectedStore } from "@/src/context/StoreContext";
 import { clearAuth, getAccount, getToken } from "@/src/lib/authStorage";
 import { getStoreTypeConfig } from "@/src/lib/storeTypeConfig";
-import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
+import { applyThemeToDocument, getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -174,7 +174,9 @@ export function StoreSelector() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setTheme(getStoredTheme());
+      const storedTheme = getStoredTheme();
+      setTheme(storedTheme);
+      applyThemeToDocument(storedTheme);
       setCanCreate(hasCreatePermission());
       setDisplayName(getDisplayName());
       const savedSort = window.localStorage.getItem(STORE_SORT_KEY);
@@ -229,7 +231,7 @@ export function StoreSelector() {
   }
 
   return (
-    <main className={`min-h-dvh w-full px-4 py-6 sm:px-6 lg:px-8 ${styles.screen}`}>
+    <main data-paydesk-theme={theme} className={`min-h-dvh w-full px-4 py-6 sm:px-6 lg:px-8 ${styles.screen}`}>
       <motion.section
         className={`mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[900px] flex-col rounded-[14px] border backdrop-blur-xl ${styles.frame}`}
         initial={{ opacity: 0, y: 14 }}

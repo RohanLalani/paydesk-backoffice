@@ -11,6 +11,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Loader2, MapPin, Store, X } from "lucide-react";
+import { FormSelect } from "@/src/components/ui/FormSelect";
 import { createStore } from "@/src/features/stores/api";
 import { BUSINESS_TYPE_GROUPS } from "@/src/features/stores/businessTypes";
 import type { StoreBusinessType } from "@/src/features/stores/types";
@@ -337,7 +338,7 @@ export function CreateStoreModal({
                   className={`pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 ${styles.icon}`}
                   aria-hidden="true"
                 />
-                <select
+                <FormSelect
                   id="store-business-type"
                   value={businessType}
                   onChange={(event) => {
@@ -347,7 +348,7 @@ export function CreateStoreModal({
                     }
                   }}
                   disabled={isSubmitting}
-                  className={`h-12 w-full appearance-none rounded-[8px] border pl-11 pr-4 text-sm font-semibold outline-none transition focus:ring-4 disabled:cursor-not-allowed disabled:opacity-70 ${styles.select}`}
+                  selectClassName={`h-12 appearance-none pl-11 pr-4 font-semibold focus:ring-4 ${styles.select}`}
                 >
                   <option value="">Select a business type</option>
                   {BUSINESS_TYPE_GROUPS.map((group) => (
@@ -359,7 +360,7 @@ export function CreateStoreModal({
                       ))}
                     </optgroup>
                   ))}
-                </select>
+                </FormSelect>
               </div>
             </div>
 

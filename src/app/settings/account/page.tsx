@@ -17,7 +17,7 @@ import type { AuthAccount } from "@/src/features/auth/types";
 import { getSelectedStore, clearSelectedStoreStorage } from "@/src/context/StoreContext";
 import type { Store as StoreType } from "@/src/features/stores/types";
 import { clearAuth, getAccount, getToken } from "@/src/lib/authStorage";
-import { getStoredTheme, setStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
+import { applyThemeToDocument, getStoredTheme, setStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 
 const styles = {
   light: {
@@ -83,7 +83,9 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setTheme(getStoredTheme());
+      const storedTheme = getStoredTheme();
+      setTheme(storedTheme);
+      applyThemeToDocument(storedTheme);
       setAccount(getAccount());
       setSelectedStore(getSelectedStore());
     });
@@ -105,7 +107,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <main className={`min-h-dvh w-full px-4 py-6 sm:px-6 lg:px-8 ${themeStyles.screen}`}>
+    <main data-paydesk-theme={theme} className={`min-h-dvh w-full px-4 py-6 sm:px-6 lg:px-8 ${themeStyles.screen}`}>
       <motion.section
         className={`mx-auto min-h-[calc(100dvh-3rem)] w-full max-w-[900px] rounded-[14px] border p-5 backdrop-blur-xl sm:p-7 lg:p-9 ${themeStyles.frame}`}
         initial={{ opacity: 0, y: 14 }}

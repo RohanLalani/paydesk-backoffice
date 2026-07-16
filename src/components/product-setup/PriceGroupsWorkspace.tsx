@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { AlertCircle, ArrowLeft, CheckCircle2, Edit3, LoaderCircle, RotateCcw, Save, Search } from "lucide-react";
 import { z } from "zod";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
+import { FormSelect } from "@/src/components/ui/FormSelect";
 import {
   createPriceGroup,
   getPriceGroupProducts,
@@ -260,11 +261,11 @@ function PriceGroupList({
             <Search className={`pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 ${mutedClass}`} aria-hidden="true" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search price groups" className={`h-11 w-full rounded-[8px] border py-2 pl-10 pr-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 ${inputClass}`} />
           </label>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 ${inputClass}`}>
+          <FormSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} selectClassName={inputClass}>
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
+          </FormSelect>
         </div>
 
         {isLoading ? (
@@ -477,11 +478,11 @@ function PriceGroupDetail({
                 <Search className={`pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 ${mutedClass}`} aria-hidden="true" />
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search barcode or product" className={`h-11 w-full rounded-[8px] border py-2 pl-10 pr-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 ${inputClass}`} />
               </label>
-              <select value={matchFilter} onChange={(event) => setMatchFilter(event.target.value as MatchFilter)} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 ${inputClass}`}>
+              <FormSelect value={matchFilter} onChange={(event) => setMatchFilter(event.target.value as MatchFilter)} selectClassName={inputClass}>
                 <option value="all">All</option>
                 <option value="matches">Matches</option>
                 <option value="mismatches">Mismatches</option>
-              </select>
+              </FormSelect>
             </div>
             <div className={`mt-5 overflow-hidden rounded-[8px] border ${nestedClass}`}>
               {isLoading ? (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { AlertCircle, CheckCircle2, Edit3, LoaderCircle, RotateCcw, Save, Search, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { z } from "zod";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
+import { FormSelect } from "@/src/components/ui/FormSelect";
 import {
   createDepartment,
   getStoreDepartments,
@@ -353,24 +354,24 @@ function DepartmentsWorkspaceContent({
               <input value={form.posDepartmentNumber} onChange={(event) => updateForm("posDepartmentNumber", event.target.value)} disabled={!canEdit || isSaving} inputMode="numeric" placeholder="1" className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`} />
             </Field>
             <Field label="Department type" error={fieldErrors.type}>
-              <select value={form.type} onChange={(event) => updateForm("type", event.target.value as DepartmentFormState["type"])} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+              <FormSelect value={form.type} onChange={(event) => updateForm("type", event.target.value as DepartmentFormState["type"])} disabled={!canEdit || isSaving} selectClassName={inputClass}>
                 {departmentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
+              </FormSelect>
             </Field>
             <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax rate before creating a department." : undefined}>
-              <select value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+              <FormSelect value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} selectClassName={inputClass}>
                 <option value="">Select tax</option>
                 {taxes.map((tax) => (
                   <option key={tax.id} value={tax.id}>
                     {tax.rate === undefined ? tax.name : `${tax.name} - ${Number(tax.rate * 100).toFixed(2)}%`}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </Field>
             <Field label="Minimum age" error={fieldErrors.minimumAge}>
-              <select value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 disabled:cursor-not-allowed ${inputClass}`}>
+              <FormSelect value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} selectClassName={inputClass}>
                 {minimumAges.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
+              </FormSelect>
             </Field>
           </div>
         </DepartmentFormSection>
@@ -474,15 +475,15 @@ function DepartmentsWorkspaceContent({
             </label>
             <label>
               <span className="sr-only">Status filter</span>
-              <select
+              <FormSelect
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                className={`h-11 w-full rounded-[8px] border px-3 text-sm font-bold outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#7c5cff]/20 ${inputClass}`}
+                selectClassName={inputClass}
               >
                 <option value="all">All</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-              </select>
+              </FormSelect>
             </label>
           </div>
 

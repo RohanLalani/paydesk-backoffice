@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type F
 import { AlertCircle, Camera, CheckCircle2, LoaderCircle, PackageCheck, RotateCcw, Save, Search, X } from "lucide-react";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
 import { ProductsSidebar } from "@/src/components/layout/ProductsSidebar";
+import { FormSelect } from "@/src/components/ui/FormSelect";
 import {
   createProduct,
   getDepartments,
+  getNextProductNumber,
   getPriceGroups,
   getProductCategories,
   getTaxes,
@@ -134,6 +136,9 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
   const [categories, setCategories] = useState<ProductReference[]>([]);
   const [priceGroups, setPriceGroups] = useState<ProductReference[]>([]);
   const [taxes, setTaxes] = useState<ProductReference[]>([]);
+  const [productNumber, setProductNumber] = useState<number | null>(null);
+  const [nextProductNumber, setNextProductNumber] = useState<number | null>(null);
+  const [productNumberLoading, setProductNumberLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(true);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -157,13 +162,15 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       setRepeatTemplate(null);
     });
 
-    Promise.all([getDepartments(storeId), getProductCategories(storeId), getPriceGroups(storeId), getTaxes(storeId)])
-      .then(([departmentItems, categoryItems, priceGroupItems, taxItems]) => {
+    Promise.all([getDepartments(storeId), getProductCategories(storeId), getPriceGroups(storeId), getTaxes(storeId), getNextProductNumber(storeId)])
+      .then(([departmentItems, categoryItems, priceGroupItems, taxItems, nextNumber]) => {
         if (!isMounted) return;
         setDepartments(sortRefs(departmentItems));
         setCategories(sortRefs(categoryItems));
         setPriceGroups(sortRefs(priceGroupItems));
         setTaxes(sortRefs(taxItems));
+        setNextProductNumber(nextNumber.nextProductNumber);
+        setProductNumber(null);
       })
       .catch((apiError: unknown) => {
         if (!isMounted) return;
@@ -173,7 +180,10 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
         setError("Reference data could not be loaded. Please refresh and try again.");
       })
       .finally(() => {
-        if (isMounted) setReferenceLoading(false);
+        if (isMounted) {
+          setReferenceLoading(false);
+          setProductNumberLoading(false);
+        }
       });
 
     return () => {
@@ -208,6 +218,19 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     if (field === "unitRetail") setPriceGroupDefaultMessage("");
   }
 
+  async function refreshNextProductNumber() {
+    setProductNumberLoading(true);
+    try {
+      const response = await getNextProductNumber(storeId);
+      setNextProductNumber(response.nextProductNumber);
+      setProductNumber(null);
+    } catch {
+      setNextProductNumber(null);
+    } finally {
+      setProductNumberLoading(false);
+    }
+  }
+
   function handlePriceGroupChange(priceGroupId: string) {
     const priceGroup = priceGroups.find((item) => item.id === priceGroupId);
 
@@ -229,6 +252,11 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setForm((current) => ({
       ...current,
       departmentId,
+      productCategoryId:
+        current.productCategoryId &&
+        categories.some((category) => category.id === current.productCategoryId && category.departmentId === departmentId)
+          ? current.productCategoryId
+          : "",
       ...(mode === "create" && department
         ? {
             taxId: department.defaultTaxId ?? "",
@@ -245,7 +273,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
           ? { taxId: department.defaultTaxId ?? current.taxId }
           : {}),
     }));
-    setFieldErrors((current) => ({ ...current, departmentId: undefined, taxId: undefined, form: undefined }));
+    setFieldErrors((current) => ({ ...current, departmentId: undefined, productCategoryId: undefined, taxId: undefined, form: undefined }));
   }
 
   function handleRepeatPreviousChange(checked: boolean) {
@@ -278,6 +306,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
 
       if (result.found) {
         loadProduct(result.product);
+        setProductNumber(result.product.productNumber);
         setPriceGroupDefaultMessage("");
         setMessage("Existing item loaded.");
       } else {
@@ -298,6 +327,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
         setMode("create");
         setProductId(null);
         setUpdatedAt(null);
+        setProductNumber(null);
         setMessage(repeatedValues ? "Previous item values applied." : "No item found. Enter details to create it.");
       }
     } catch (apiError) {
@@ -338,6 +368,8 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
           ? await updateProduct(storeId, productId, payload)
           : await createProduct(storeId, payload);
       loadProduct(saved);
+      setProductNumber(saved.productNumber);
+      setNextProductNumber(saved.productNumber + 1);
       if (repeatPreviousValues) {
         setRepeatTemplate(productToRepeatTemplate(saved));
       }
@@ -357,8 +389,12 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     if (product.priceGroup && product.priceGroupId && !priceGroups.some((item) => item.id === product.priceGroupId)) {
       setPriceGroups((current) => sortRefs([...current, { ...product.priceGroup!, name: `${product.priceGroup!.name} (Inactive)`, isActive: false }]));
     }
+    if (product.productCategory && product.productCategoryId && !categories.some((item) => item.id === product.productCategoryId)) {
+      setCategories((current) => sortRefs([...current, { ...product.productCategory!, name: `${product.productCategory!.name} (Inactive)`, isActive: false }]));
+    }
 
     setForm(productToForm(product));
+    setProductNumber(product.productNumber);
     setPriceGroupDefaultMessage("");
     setMode("edit");
     setProductId(product.id);
@@ -372,6 +408,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setMode("idle");
     setProductId(null);
     setUpdatedAt(null);
+    void refreshNextProductNumber();
     setMessage("");
     setError("");
     setPriceGroupDefaultMessage("");
@@ -458,6 +495,12 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     : "border-[#ded8f3] bg-white text-slate-950 placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-500";
   const mutedClass = isDark ? "text-slate-400" : "text-slate-500";
   const selectedDepartment = departments.find((item) => item.id === form.departmentId);
+  const visibleCategories = categories.filter(
+    (item) =>
+      !form.departmentId ||
+      item.departmentId === form.departmentId ||
+      item.id === form.productCategoryId,
+  );
   const inheritedTax = selectedDepartment?.defaultTax ?? taxes.find((item) => item.id === selectedDepartment?.defaultTaxId);
   const canSave = canEdit && !referenceLoading && departments.length > 0 && Boolean(selectedDepartment?.defaultTaxId || form.taxId);
   const validationCount = Object.values(fieldErrors).filter(Boolean).length;
@@ -478,7 +521,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       </header>
 
       <FormSectionCard title="Barcode Lookup" subtitle="Scan, type, or paste a barcode to load an item or begin a new one." cardClass={cardClass}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto] lg:items-start">
           <div>
             <TextField
               label="Barcode"
@@ -499,6 +542,14 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
               onChange={handleRepeatPreviousChange}
             />
           </div>
+          <TextField
+            label="Product Number"
+            value={productNumberLoading ? "Loading..." : String(productNumber ?? nextProductNumber ?? "")}
+            onChange={() => undefined}
+            inputClass={inputClass}
+            disabled
+            helperText={productNumber ? "Store product number." : "Assigned automatically for this store."}
+          />
           <div className="lg:pt-[29px]">
             <PrimaryButton type="button" onClick={() => void handleLookup()} disabled={isLookingUp}>
               {isLookingUp ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Search className="size-4" aria-hidden="true" />}
@@ -545,7 +596,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
               ["other", "Other"],
             ]} />
             <SelectField label="Department" value={form.departmentId} onChange={handleDepartmentChange} error={fieldErrors.departmentId} inputClass={inputClass} required options={departments.map((item) => [item.id, `${item.name}${item.isActive === false ? " (Inactive)" : ""}`])} placeholder="Select department" />
-            <SelectField label="Product category" value={form.productCategoryId} onChange={(value) => updateField("productCategoryId", value)} inputClass={inputClass} options={categories.map((item) => [item.id, item.name])} placeholder="None" />
+            <SelectField label="Product category" value={form.productCategoryId} onChange={(value) => updateField("productCategoryId", value)} inputClass={inputClass} options={visibleCategories.map((item) => [item.id, `${item.name}${item.isActive === false ? " (Inactive)" : ""}`])} placeholder={form.departmentId ? "None" : "Select department first"} />
             <SelectField label="Price group" value={form.priceGroupId} onChange={handlePriceGroupChange} inputClass={inputClass} options={priceGroups.map((item) => [item.id, item.name])} placeholder="None" />
             <ToggleRow className="md:col-span-2" label="Active item" helper="Available for sale, lookup, and product workflows." checked={form.isActive} onChange={(value) => updateField("isActive", value)} />
           </div>
@@ -721,12 +772,12 @@ function TextField({
 function SelectField({ label, value, onChange, options, placeholder, error, inputClass, required }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]>; placeholder?: string; error?: string; inputClass: string; required?: boolean }) {
   return (
     <FormField label={label} error={error} required={required}>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className={`h-11 w-full rounded-[8px] border px-3 text-sm font-semibold outline-none transition focus:ring-4 focus:ring-[#7c5cff]/25 ${inputClass}`}>
+      <FormSelect value={value} onChange={(event) => onChange(event.target.value)} selectClassName={`font-semibold focus:ring-[#7c5cff]/25 ${inputClass}`}>
         <option value="">{placeholder ?? "Select"}</option>
         {options.map(([optionValue, labelText]) => (
           <option key={optionValue} value={optionValue}>{labelText}</option>
         ))}
-      </select>
+      </FormSelect>
     </FormField>
   );
 }

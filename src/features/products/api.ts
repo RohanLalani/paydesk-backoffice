@@ -8,6 +8,9 @@ export type ProductReference = {
   name: string;
   rate?: number;
   defaultUnitRetail?: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  posDepartmentNumber?: number | null;
   defaultTaxId?: string | null;
   defaultTax?: ProductReference | null;
   defaultAllowEbt?: boolean;
@@ -118,8 +121,58 @@ export type PriceGroupProductsCollection = {
   limit: number;
 };
 
+export type ProductCategory = {
+  id: string;
+  storeId: string;
+  name: string;
+  brand: string | null;
+  description: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  posDepartmentNumber: number | null;
+  productCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductCategoryProduct = {
+  id: string;
+  productNumber: number;
+  barcode: string;
+  name: string;
+  departmentName: string | null;
+  unitRetail: number;
+  isActive: boolean;
+};
+
+export type ProductCategoryCollection = {
+  items: ProductCategory[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type ProductCategoryProductsCollection = {
+  items: ProductCategoryProduct[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type CreateProductCategoryInput = {
+  name: string;
+  departmentId: string;
+  brand?: string | null;
+  description?: string | null;
+  isActive: boolean;
+};
+
+export type UpdateProductCategoryInput = Partial<CreateProductCategoryInput>;
+
 export type ProductRecord = {
   id: string;
+  productNumber: number;
   barcode: string;
   name: string;
   saleType: ProductSaleType;
@@ -157,6 +210,7 @@ export type ProductRecord = {
   priceGroupId: string | null;
   priceGroup?: ProductReference | null;
   productCategoryId: string | null;
+  productCategory?: ProductReference | null;
   taxId: string;
   updatedAt?: string;
 };
@@ -164,6 +218,7 @@ export type ProductRecord = {
 export type ProductPayload = Omit<
   ProductRecord,
   | "id"
+  | "productNumber"
   | "discountPerUnit"
   | "rebatePerUnit"
   | "unitCost"
@@ -183,6 +238,14 @@ export async function lookupProductByBarcode(storeId: string, barcode: string) {
   return apiClient<BarcodeLookupResponse>(
     `/product/stores/${storeId}/products/barcode/${encodeURIComponent(barcode)}`,
   );
+}
+
+export function getNextProductNumber(storeId: string) {
+  return apiClient<{ nextProductNumber: number }>(`/stores/${storeId}/products/next-product-number`);
+}
+
+export function lookupProductByProductNumber(storeId: string, productNumber: number) {
+  return apiClient<ProductRecord>(`/stores/${storeId}/products/product-number/${productNumber}`);
 }
 
 export async function createProduct(storeId: string, payload: ProductPayload) {
@@ -253,6 +316,57 @@ export function updateDepartment(storeId: string, departmentId: string, payload:
 
 export function getProductCategories(storeId: string) {
   return apiClient<ProductReference[]>(`/product/category/store/${storeId}`);
+}
+
+export function getStoreProductCategories(
+  storeId: string,
+  query: { active?: boolean; search?: string; departmentId?: string; page?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 100),
+  });
+
+  if (query.active !== undefined) params.set("active", String(query.active));
+  if (query.search) params.set("search", query.search);
+  if (query.departmentId) params.set("departmentId", query.departmentId);
+
+  return apiClient<ProductCategoryCollection>(`/stores/${storeId}/categories?${params.toString()}`);
+}
+
+export function getStoreProductCategory(storeId: string, categoryId: string) {
+  return apiClient<ProductCategory>(`/stores/${storeId}/categories/${categoryId}`);
+}
+
+export function createProductCategory(storeId: string, payload: CreateProductCategoryInput) {
+  return apiClient<ProductCategory>(`/stores/${storeId}/categories`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateProductCategory(storeId: string, categoryId: string, payload: UpdateProductCategoryInput) {
+  return apiClient<ProductCategory>(`/stores/${storeId}/categories/${categoryId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function getProductCategoryProducts(
+  storeId: string,
+  categoryId: string,
+  query: { search?: string; page?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 100),
+  });
+
+  if (query.search) params.set("search", query.search);
+
+  return apiClient<ProductCategoryProductsCollection>(
+    `/stores/${storeId}/categories/${categoryId}/products?${params.toString()}`,
+  );
 }
 
 export function getPriceGroups(storeId: string) {

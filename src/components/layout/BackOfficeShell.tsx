@@ -10,7 +10,7 @@ import { useStoreCapabilities } from "@/src/features/stores/capabilities";
 import { getSelectedStore } from "@/src/context/StoreContext";
 import { getAccount, getToken } from "@/src/lib/authStorage";
 import { getStoreTypeConfig } from "@/src/lib/storeTypeConfig";
-import { getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
+import { applyThemeToDocument, getStoredTheme, type PayDeskTheme } from "@/src/lib/theme";
 import { BackOfficeSidebar, type BackOfficeNavKey } from "@/src/components/layout/BackOfficeSidebar";
 import { ContextualSidebar } from "@/src/components/layout/ContextualSidebar";
 import { ENABLE_LIVE_SUPPORT, LiveSupportCard } from "@/src/components/support/LiveSupportCard";
@@ -71,7 +71,9 @@ export function BackOfficeShell({
 
   useEffect(() => {
     queueMicrotask(() => {
-      setTheme(getStoredTheme());
+      const storedTheme = getStoredTheme();
+      setTheme(storedTheme);
+      applyThemeToDocument(storedTheme);
       setAccount(getAccount());
     });
 
@@ -155,7 +157,7 @@ export function BackOfficeShell({
   }
 
   return (
-    <div className={`min-h-dvh lg:h-dvh lg:overflow-hidden ${shellStyles.screen}`}>
+    <div data-paydesk-theme={theme} className={`min-h-dvh lg:h-dvh lg:overflow-hidden ${shellStyles.screen}`}>
       <div className="flex min-h-dvh lg:h-dvh lg:min-h-0 lg:overflow-hidden">
         <BackOfficeSidebar activeItem={activeItem} account={account} theme={theme} capabilities={capabilities} />
 

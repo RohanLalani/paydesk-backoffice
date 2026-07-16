@@ -23,4 +23,20 @@ export function getStoredTheme(): PayDeskTheme {
 
 export function setStoredTheme(theme: PayDeskTheme) {
   window.localStorage.setItem(PAYDESK_THEME_KEY, theme);
+  applyThemeToDocument(theme);
+}
+
+export function applyThemeToDocument(theme: PayDeskTheme) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.documentElement.dataset.paydeskTheme = theme;
+  document.documentElement.dataset.theme = theme;
+
+  if (theme === "dark") {
+    document.documentElement.style.colorScheme = "dark";
+  } else {
+    document.documentElement.style.removeProperty("color-scheme");
+  }
 }

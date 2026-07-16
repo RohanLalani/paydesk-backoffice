@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { FormSelect } from "@/src/components/ui/FormSelect";
 import type { SalesTrendPoint } from "@/src/features/dashboard/types";
 import type { PayDeskTheme } from "@/src/lib/theme";
 
@@ -58,10 +59,10 @@ export function SalesTrendCard({ data, theme, rangeLabel, onRangeChange }: Sales
             Revenue performance over the last 24 hours
           </p>
         </div>
-        <select
+        <FormSelect
           value={rangeLabel.toLowerCase()}
           onChange={(event) => onRangeChange(event.target.value as "today" | "week" | "month")}
-          className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] border px-3 text-xs font-bold transition ${
+          selectClassName={`inline-flex h-8 w-auto shrink-0 items-center gap-2 rounded-[6px] px-3 text-xs font-bold ${
             isDark
               ? "border-slate-400/15 bg-white/[0.03] text-slate-300 hover:border-[#7c5cff]/60"
               : "border-[#ded8f3] bg-white text-slate-600 hover:border-[#7c5cff]/60"
@@ -70,7 +71,7 @@ export function SalesTrendCard({ data, theme, rangeLabel, onRangeChange }: Sales
           <option value="today">Today</option>
           <option value="week">Week</option>
           <option value="month">Month</option>
-        </select>
+        </FormSelect>
         <ChevronDown className="-ml-8 mt-2 size-3.5 pointer-events-none" aria-hidden="true" />
       </div>
 
