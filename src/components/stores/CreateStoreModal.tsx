@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { AlertCircle, Loader2, MapPin, Store, X } from "lucide-react";
 import { FormSelect } from "@/src/components/ui/FormSelect";
+import { PayDeskSwitch } from "@/src/components/ui/Switch";
 import { createStore } from "@/src/features/stores/api";
 import { BUSINESS_TYPE_GROUPS } from "@/src/features/stores/businessTypes";
 import type { StoreBusinessType } from "@/src/features/stores/types";
@@ -370,46 +371,33 @@ export function CreateStoreModal({
               </legend>
               {[
                 {
-                  id: "store-feature-lottery",
                   label: "Lottery",
                   description: "Show lottery tools for this store.",
                   checked: lotteryEnabled,
                   onChange: setLotteryEnabled,
                 },
                 {
-                  id: "store-feature-recipe-suite",
                   label: "Recipe Suite",
                   description: "Show recipe and production tools for this store.",
                   checked: recipeSuiteEnabled,
                   onChange: setRecipeSuiteEnabled,
                 },
               ].map((feature) => (
-                <label
-                  key={feature.id}
-                  htmlFor={feature.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-[8px] border p-3 text-sm transition ${
+                <PayDeskSwitch
+                  key={feature.label}
+                  label={feature.label}
+                  helper={feature.description}
+                  checked={feature.checked}
+                  onChange={feature.onChange}
+                  disabled={isSubmitting}
+                  className={`rounded-[8px] border p-3 text-sm transition ${
                     feature.checked
                       ? "border-[#4F22F2] bg-[#4F22F2]/10"
                       : theme === "dark"
                         ? "border-[rgba(148,163,184,0.18)] bg-[#111827]"
                         : "border-[#CBD5E1] bg-white"
                   }`}
-                >
-                  <input
-                    id={feature.id}
-                    type="checkbox"
-                    checked={feature.checked}
-                    onChange={(event) => feature.onChange(event.target.checked)}
-                    disabled={isSubmitting}
-                    className="mt-1 size-4 accent-[#4F22F2]"
-                  />
-                  <span>
-                    <span className={`block font-bold ${styles.label}`}>{feature.label}</span>
-                    <span className={`mt-1 block text-xs font-medium leading-5 ${styles.helper}`}>
-                      {feature.description}
-                    </span>
-                  </span>
-                </label>
+                />
               ))}
             </fieldset>
 

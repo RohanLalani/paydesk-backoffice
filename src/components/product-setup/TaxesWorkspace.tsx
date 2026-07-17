@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, Edit3, LoaderCircle, RotateCcw, Save, Search
 import { z } from "zod";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
 import { FormSelect } from "@/src/components/ui/FormSelect";
+import { PayDeskSwitch } from "@/src/components/ui/Switch";
 import { createTax, getStoreTaxes, updateTax, type TaxRecord } from "@/src/features/products/api";
 import { ApiClientError } from "@/src/lib/apiClient";
 
@@ -411,16 +412,7 @@ function AffixedInput({ prefix, suffix, value, onChange, disabled, placeholder, 
 
 function ToggleRow({ label, helper, checked, disabled, onChange }: { label: string; helper: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3">
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
-      <span className={`mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition ${checked ? "bg-[#4f2df2]" : "bg-slate-300"} peer-focus-visible:ring-4 peer-focus-visible:ring-[#7c5cff]/35 peer-disabled:cursor-not-allowed peer-disabled:opacity-60`}>
-        <span className={`size-4 rounded-full bg-white transition ${checked ? "translate-x-5" : "translate-x-0"}`} />
-      </span>
-      <span>
-        <span className="block text-sm font-bold">{label}</span>
-        <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{helper}</span>
-      </span>
-    </label>
+    <PayDeskSwitch label={label} helper={helper} checked={checked} disabled={disabled} onChange={onChange} />
   );
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { BackOfficeShell, type BackOfficeShellContext } from "@/src/components/layout/BackOfficeShell";
+import { PayDeskSwitch } from "@/src/components/ui/Switch";
 import { STORE_CAPABILITIES_UPDATED_EVENT } from "@/src/features/stores/capabilities";
 import { updateStore, updateStoreFeatures } from "@/src/features/stores/api";
 
@@ -81,14 +82,18 @@ function StoreSettingsForm({ selectedStore, capabilities, theme }: BackOfficeShe
 
         <div className="grid gap-3">
           <p className="text-sm font-bold">Included store features</p>
-          <label className={`flex items-center justify-between rounded-[8px] border p-4 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}>
-            <span className="text-sm font-bold">Lottery</span>
-            <input type="checkbox" checked={lottery} onChange={(event) => setLottery(event.target.checked)} className="size-4 accent-[#4f2df2]" />
-          </label>
-          <label className={`flex items-center justify-between rounded-[8px] border p-4 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}>
-            <span className="text-sm font-bold">Recipe Suite</span>
-            <input type="checkbox" checked={recipeSuite} onChange={(event) => setRecipeSuite(event.target.checked)} className="size-4 accent-[#4f2df2]" />
-          </label>
+          <PayDeskSwitch
+            label="Lottery"
+            checked={lottery}
+            onChange={setLottery}
+            className={`flex-row-reverse items-center justify-between rounded-[8px] border p-4 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}
+          />
+          <PayDeskSwitch
+            label="Recipe Suite"
+            checked={recipeSuite}
+            onChange={setRecipeSuite}
+            className={`flex-row-reverse items-center justify-between rounded-[8px] border p-4 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}
+          />
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { BackOfficeShell, type BackOfficeShellContext } from "@/src/components/layout/BackOfficeShell";
+import { PayDeskSwitch } from "@/src/components/ui/Switch";
 import {
   addLoyaltyService,
   getStoreBillingSummary,
@@ -335,38 +336,28 @@ function ServicesContent({ selectedStore, capabilities, theme }: BackOfficeShell
         <section className={`rounded-[8px] border p-5 ${isDark ? "border-slate-400/15 bg-white/[0.03]" : "border-[#ded8f3] bg-[#fbfaff]"}`}>
           <h2 className="text-base font-bold">Included store features</h2>
           <div className="mt-4 grid gap-3">
-            <label className="flex items-center justify-between gap-4">
-              <span>
-                <span className="block text-sm font-bold">Lottery</span>
-                <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Included feature, no monthly add-on charge.</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={lottery}
-                disabled={isSavingFeature}
-                onChange={(event) => {
-                  setLottery(event.target.checked);
-                  void saveIncludedFeatures(event.target.checked, recipeSuite);
-                }}
-                className="size-4 accent-[#4f2df2]"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-4">
-              <span>
-                <span className="block text-sm font-bold">Recipe Suite</span>
-                <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>Included feature, no monthly add-on charge.</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={recipeSuite}
-                disabled={isSavingFeature}
-                onChange={(event) => {
-                  setRecipeSuite(event.target.checked);
-                  void saveIncludedFeatures(lottery, event.target.checked);
-                }}
-                className="size-4 accent-[#4f2df2]"
-              />
-            </label>
+            <PayDeskSwitch
+              label="Lottery"
+              helper="Included feature, no monthly add-on charge."
+              checked={lottery}
+              disabled={isSavingFeature}
+              onChange={(checked) => {
+                setLottery(checked);
+                void saveIncludedFeatures(checked, recipeSuite);
+              }}
+              className="flex-row-reverse items-center justify-between gap-4"
+            />
+            <PayDeskSwitch
+              label="Recipe Suite"
+              helper="Included feature, no monthly add-on charge."
+              checked={recipeSuite}
+              disabled={isSavingFeature}
+              onChange={(checked) => {
+                setRecipeSuite(checked);
+                void saveIncludedFeatures(lottery, checked);
+              }}
+              className="flex-row-reverse items-center justify-between gap-4"
+            />
           </div>
         </section>
 

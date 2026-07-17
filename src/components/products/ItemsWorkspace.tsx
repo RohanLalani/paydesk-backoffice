@@ -5,6 +5,7 @@ import { AlertCircle, Camera, CheckCircle2, LoaderCircle, PackageCheck, RotateCc
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
 import { ProductsSidebar } from "@/src/components/layout/ProductsSidebar";
 import { FormSelect } from "@/src/components/ui/FormSelect";
+import { PayDeskSwitch } from "@/src/components/ui/Switch";
 import {
   createProduct,
   getDepartments,
@@ -159,7 +160,20 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     queueMicrotask(() => {
       if (!isMounted) return;
       setReferenceLoading(true);
+      setProductNumberLoading(true);
       setRepeatTemplate(null);
+      setForm(defaultForm);
+      setMode("idle");
+      setProductId(null);
+      setUpdatedAt(null);
+      setProductNumber(null);
+      setNextProductNumber(null);
+      setMessage("");
+      setError("");
+      setPriceGroupDefaultMessage("");
+      setFieldErrors({});
+      setHasSubmitted(false);
+      lastLookupRef.current = "";
     });
 
     Promise.all([getDepartments(storeId), getProductCategories(storeId), getPriceGroups(storeId), getTaxes(storeId), getNextProductNumber(storeId)])
@@ -220,15 +234,19 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
 
   async function refreshNextProductNumber() {
     setProductNumberLoading(true);
+    setProductNumber(null);
     try {
       const response = await getNextProductNumber(storeId);
       setNextProductNumber(response.nextProductNumber);
-      setProductNumber(null);
     } catch {
       setNextProductNumber(null);
     } finally {
       setProductNumberLoading(false);
     }
+  }
+
+  function focusBarcodeField() {
+    queueMicrotask(() => barcodeRef.current?.focus({ preventScroll: true }));
   }
 
   function handlePriceGroupChange(priceGroupId: string) {
@@ -363,17 +381,16 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
 
     try {
       const payload = buildPayload(storeId, form);
+      const wasEditing = mode === "edit" && Boolean(productId);
       const saved =
-        mode === "edit" && productId
+        wasEditing && productId
           ? await updateProduct(storeId, productId, payload)
           : await createProduct(storeId, payload);
-      loadProduct(saved);
-      setProductNumber(saved.productNumber);
-      setNextProductNumber(saved.productNumber + 1);
-      if (repeatPreviousValues) {
-        setRepeatTemplate(productToRepeatTemplate(saved));
-      }
-      setMessage(mode === "edit" ? "Item saved." : "Item created.");
+      await resetAfterSuccessfulSave({
+        savedProduct: saved,
+        repeatPreviousValuesEnabled: repeatPreviousValues,
+        successMessage: wasEditing ? "Item updated." : "Item created.",
+      });
     } catch (apiError) {
       setError(apiError instanceof Error ? apiError.message : "Item could not be saved.");
       setMessage("");
@@ -408,13 +425,58 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setMode("idle");
     setProductId(null);
     setUpdatedAt(null);
+    setProductNumber(null);
     void refreshNextProductNumber();
     setMessage("");
     setError("");
     setPriceGroupDefaultMessage("");
     setFieldErrors({});
     setHasSubmitted(false);
-    queueMicrotask(() => barcodeRef.current?.focus());
+    lastLookupRef.current = "";
+    focusBarcodeField();
+  }
+
+  async function resetAfterSuccessfulSave({
+    savedProduct,
+    repeatPreviousValuesEnabled,
+    successMessage,
+  }: {
+    savedProduct: ProductRecord;
+    repeatPreviousValuesEnabled: boolean;
+    successMessage: string;
+  }) {
+    const repeatedValues = repeatPreviousValuesEnabled
+      ? sanitizeRepeatTemplate(productToRepeatTemplate(savedProduct), {
+          departments,
+          categories,
+          priceGroups,
+          taxes,
+        })
+      : null;
+
+    if (repeatPreviousValuesEnabled) {
+      setRepeatTemplate(repeatedValues);
+    }
+
+    stopCamera();
+    setForm({
+      ...defaultForm,
+      ...(repeatedValues ?? {}),
+      barcode: "",
+      currentQuantity: "0",
+    });
+    setMode("idle");
+    setProductId(null);
+    setUpdatedAt(null);
+    setProductNumber(null);
+    setError("");
+    setPriceGroupDefaultMessage("");
+    setFieldErrors({});
+    setHasSubmitted(false);
+    lastLookupRef.current = "";
+    await refreshNextProductNumber();
+    setMessage(successMessage);
+    focusBarcodeField();
   }
 
   async function openCamera() {
@@ -784,16 +846,14 @@ function SelectField({ label, value, onChange, options, placeholder, error, inpu
 
 function ToggleRow({ label, helper, checked, onChange, compact = false, className = "" }: { label: string; helper: string; checked: boolean; onChange: (checked: boolean) => void; compact?: boolean; className?: string }) {
   return (
-    <label className={`flex min-h-[72px] items-center justify-between gap-4 rounded-[8px] border border-[#ded8f3] px-4 py-3 ${compact ? "" : "w-full"} ${className}`}>
-      <span className="min-w-0">
-        <span className="block text-sm font-extrabold tracking-normal">{label}</span>
-        <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{helper}</span>
-      </span>
-      <span className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${checked ? "bg-[#4f2df2]" : "bg-slate-300"}`}>
-        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
-        <span className={`size-5 rounded-full bg-white shadow-sm transition ${checked ? "translate-x-5" : "translate-x-0.5"}`} aria-hidden="true" />
-      </span>
-    </label>
+    <PayDeskSwitch
+      label={label}
+      helper={helper}
+      checked={checked}
+      onChange={onChange}
+      compact={compact}
+      className={`min-h-[72px] flex-row-reverse items-center justify-between rounded-[8px] border border-[#ded8f3] px-4 py-3 ${className}`}
+    />
   );
 }
 
