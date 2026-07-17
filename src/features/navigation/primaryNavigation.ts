@@ -20,6 +20,7 @@ import { inventoryNavigation } from "@/src/features/inventory/navigation";
 import { logsNavigation } from "@/src/features/logs/navigation";
 import { productSetupNavigation } from "@/src/features/product-setup/navigation";
 import { productNavigation } from "@/src/features/products/navigation";
+import { sendToPosNavigation } from "@/src/features/send-to-pos/navigation";
 import type { AuthAccount } from "@/src/features/auth/types";
 import type { StoreCapabilities } from "@/src/features/stores/types";
 
@@ -120,7 +121,7 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     href: "/inventory",
     icon: Boxes,
     category: "general",
-    match: ["/inventory", "/products/purchases", "/products/inventory", "/products/inventory-adjustments", "/products/orders"],
+    match: ["/inventory", "/products/purchases", "/products/inventory", "/inventory/price-book", "/products/inventory-adjustments", "/products/orders"],
     permission: "manage_inventory",
     secondaryLabel: "Inventory Management",
     secondaryNavigation: inventoryNavigation,
@@ -128,10 +129,12 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
   {
     key: "sendToPos",
     label: "Send to POS",
-    href: "/send-to-pos",
+    href: "/send-to-pos/multi-pack-review",
     icon: MonitorUp,
     category: "general",
     match: ["/send-to-pos"],
+    secondaryLabel: "Send to POS",
+    secondaryNavigation: sendToPosNavigation,
   },
   {
     key: "logs",

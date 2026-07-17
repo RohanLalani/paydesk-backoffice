@@ -2,6 +2,7 @@ import {
   Activity,
   Boxes,
   ClipboardList,
+  PackagePlus,
   ReceiptText,
   type LucideIcon,
 } from "lucide-react";
@@ -28,6 +29,13 @@ export const logsNavigation: LogsNavigationItem[] = [
     href: "/logs/inventory",
     icon: Boxes,
     description: "Review inventory events, stock changes, and receiving activity.",
+  },
+  {
+    id: "multi-pack-logs",
+    label: "Multi Pack Logs",
+    href: "/logs/multi-pack",
+    icon: PackagePlus,
+    description: "Review multi-pack proposal, approval, and rejection history.",
   },
   {
     id: "activity-logs",

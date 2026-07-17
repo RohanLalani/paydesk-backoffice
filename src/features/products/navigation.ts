@@ -1,12 +1,12 @@
 import {
   BadgePercent,
-  BookOpen,
   Boxes,
   ClipboardList,
   ListOrdered,
   NotebookTabs,
   Package,
   PackageOpen,
+  PackagePlus,
   ScanBarcode,
   ShoppingCart,
   type LucideIcon,
@@ -29,6 +29,13 @@ export const productSections: ProductNavigationItem[] = [
     description: "Manage sellable products, item records, and catalog details.",
   },
   {
+    id: "multi-pack-pricing",
+    label: "Multi Pack Pricing",
+    href: "/products/multi-pack-pricing",
+    icon: PackagePlus,
+    description: "Create alternate pack sizes and quantity-based pricing for products.",
+  },
+  {
     id: "purchases",
     label: "Purchases",
     href: "/products/purchases",
@@ -41,13 +48,6 @@ export const productSections: ProductNavigationItem[] = [
     href: "/products/inventory",
     icon: Boxes,
     description: "Review product-level stock availability and inventory status.",
-  },
-  {
-    id: "price-book",
-    label: "Price Book",
-    href: "/products/price-book",
-    icon: BookOpen,
-    description: "Maintain pricing references and product price groups.",
   },
   {
     id: "item-logs",
@@ -95,7 +95,7 @@ export const productSections: ProductNavigationItem[] = [
 
 const visibleProductSectionIds = new Set([
   "items",
-  "price-book",
+  "multi-pack-pricing",
   "promotions",
   "shelf-labels",
 ]);

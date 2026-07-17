@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Boxes,
   ListOrdered,
   PackageOpen,
@@ -16,6 +17,13 @@ export type InventoryNavigationItem = {
 
 export const inventoryNavigation: InventoryNavigationItem[] = [
   {
+    id: "inventory-overview",
+    label: "Overview",
+    href: "/products/inventory",
+    icon: Boxes,
+    description: "Review product-level stock availability and inventory status.",
+  },
+  {
     id: "purchases",
     label: "Purchases",
     href: "/products/purchases",
@@ -23,11 +31,11 @@ export const inventoryNavigation: InventoryNavigationItem[] = [
     description: "Track product purchasing workflows and supplier intake.",
   },
   {
-    id: "inventory-overview",
-    label: "Inventory Overview",
-    href: "/products/inventory",
-    icon: Boxes,
-    description: "Review product-level stock availability and inventory status.",
+    id: "price-book",
+    label: "Price Book",
+    href: "/inventory/price-book",
+    icon: BookOpen,
+    description: "Maintain pricing references and product price groups.",
   },
   {
     id: "inventory-adjustments",

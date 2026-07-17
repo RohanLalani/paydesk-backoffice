@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { permanentRedirect } from "next/navigation";
 
 export default function ProductPriceBookPage() {
-  return <ProductSectionPage href="/products/price-book" />;
+  permanentRedirect("/inventory/price-book");
 }
