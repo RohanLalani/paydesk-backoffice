@@ -312,6 +312,89 @@ export type PriceBookProductQuery = {
   limit?: number;
 };
 
+export type InventoryOverviewRange = "7d" | "30d" | "90d";
+
+export type InventoryOverviewAlertType =
+  | "OUT_OF_STOCK"
+  | "LOW_STOCK"
+  | "NEGATIVE_STOCK"
+  | "MISSING_COST"
+  | "MISSING_MINIMUM_INVENTORY";
+
+export type InventoryOverviewStatus = "LOW_STOCK" | "OUT_OF_STOCK" | "NEGATIVE_STOCK";
+
+export type InventoryOverviewResponse = {
+  generatedAt: string;
+  range: InventoryOverviewRange;
+  summary: {
+    activeProductCount: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+    inventoryValue: string;
+    missingCostCount: number;
+  };
+  alertCounts: {
+    outOfStock: number;
+    lowStock: number;
+    negativeInventory: number;
+    missingCost: number;
+    missingMinimumInventory: number;
+  };
+  alerts: Array<{
+    productId: string;
+    productNumber: number;
+    productName: string;
+    barcode: string;
+    currentQuantity: number;
+    minimumInventory: number | null;
+    departmentName: string | null;
+    type: InventoryOverviewAlertType;
+  }>;
+  topSellers: Array<{
+    rank: number;
+    productId: string;
+    productNumber: number;
+    productName: string;
+    currentQuantity: number;
+    unitsSold: number;
+    grossSales: string;
+  }>;
+  slowSellers: Array<{
+    productId: string;
+    productNumber: number;
+    productName: string;
+    currentQuantity: number;
+    unitRetail: string;
+    unitsSold: number;
+    lastSaleAt: string | null;
+  }>;
+  deadStock: Array<{
+    productId: string;
+    productNumber: number;
+    productName: string;
+    currentQuantity: number;
+    inventoryValue: string;
+    lastSaleAt: string | null;
+    ageReferenceType: "last_sale" | "created_at";
+    ageReferenceDate: string;
+    daysSinceLastSale: number;
+  }>;
+  lowStock: Array<{
+    productId: string;
+    productNumber: number;
+    productName: string;
+    currentQuantity: number;
+    minimumInventory: number;
+    shortage: number;
+    departmentName: string | null;
+    status: InventoryOverviewStatus;
+  }>;
+  rules: {
+    deadStockLookbackDays: number;
+    deadStockAgeGraceDays: number;
+  };
+};
+
 export type ProductPayload = Omit<
   ProductRecord,
   | "id"
@@ -362,6 +445,14 @@ export function listPriceBookProducts(storeId: string, query: PriceBookProductQu
   if (query.marginStatus) params.set("marginStatus", query.marginStatus);
 
   return apiClient<PriceBookProductCollection>(`/stores/${storeId}/products?${params.toString()}`);
+}
+
+export function getInventoryOverview(storeId: string, range: InventoryOverviewRange = "30d") {
+  return apiClient<InventoryOverviewResponse>(`/stores/${storeId}/inventory/overview?range=${range}`);
+}
+
+export function getStoreProductById(storeId: string, productId: string) {
+  return apiClient<ProductRecord>(`/stores/${storeId}/products/${productId}`);
 }
 
 export async function createProduct(storeId: string, payload: ProductPayload) {

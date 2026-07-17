@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { AlertCircle, Camera, CheckCircle2, LoaderCircle, PackageCheck, RotateCcw, Save, Search, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
 import { ProductsSidebar } from "@/src/components/layout/ProductsSidebar";
 import { FormSelect } from "@/src/components/ui/FormSelect";
@@ -11,6 +12,7 @@ import {
   getDepartments,
   getNextProductNumber,
   getPriceGroups,
+  getStoreProductById,
   getProductCategories,
   getTaxes,
   lookupProductByBarcode,
@@ -123,6 +125,7 @@ export function ItemsWorkspace() {
 }
 
 function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "dark"; storeId: string; canEdit: boolean }) {
+  const searchParams = useSearchParams();
   const isDark = theme === "dark";
   const barcodeRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -153,6 +156,8 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [preloadedProductId, setPreloadedProductId] = useState<string | null>(null);
+  const requestedProductId = searchParams.get("productId");
 
   useEffect(() => {
     let isMounted = true;
@@ -173,6 +178,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       setPriceGroupDefaultMessage("");
       setFieldErrors({});
       setHasSubmitted(false);
+      setPreloadedProductId(null);
       lastLookupRef.current = "";
     });
 
@@ -205,6 +211,45 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       stopCamera();
     };
   }, [storeId]);
+
+  useEffect(() => {
+    if (!requestedProductId || referenceLoading || !departments.length) {
+      return;
+    }
+    if (requestedProductId === preloadedProductId) {
+      return;
+    }
+
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (!isMounted) return;
+      setIsLookingUp(true);
+      setMessage("Loading item...");
+      setError("");
+    });
+
+    getStoreProductById(storeId, requestedProductId)
+      .then((product) => {
+        if (!isMounted) return;
+        loadProduct(product);
+        setMessage("Existing item loaded.");
+        setPreloadedProductId(requestedProductId);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setError("The requested item could not be loaded.");
+        setMessage("");
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLookingUp(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [departments.length, loadProduct, preloadedProductId, referenceLoading, requestedProductId, storeId]);
 
   const calculations = useMemo(() => {
     const units = parseNumber(form.unitsPerCase) ?? 0;
@@ -399,7 +444,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     }
   }
 
-  function loadProduct(product: ProductRecord) {
+  const loadProduct = useCallback((product: ProductRecord) => {
     if (product.department && !departments.some((item) => item.id === product.departmentId)) {
       setDepartments((current) => sortRefs([...current, { ...product.department!, isActive: false }]));
     }
@@ -416,7 +461,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     setMode("edit");
     setProductId(product.id);
     setUpdatedAt(product.updatedAt ?? null);
-  }
+  }, [categories, departments, priceGroups]);
 
   function resetForm() {
     if (isSaving) return;

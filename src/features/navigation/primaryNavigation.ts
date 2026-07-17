@@ -118,11 +118,11 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
   {
     key: "inventory",
     label: "Inventory",
-    href: "/inventory",
+    href: "/inventory/overview",
     icon: Boxes,
     category: "general",
     match: ["/inventory", "/products/purchases", "/products/inventory", "/inventory/price-book", "/products/inventory-adjustments", "/products/orders"],
-    permission: "manage_inventory",
+    permission: "view_reports",
     secondaryLabel: "Inventory Management",
     secondaryNavigation: inventoryNavigation,
   },

@@ -19,7 +19,7 @@ export const inventoryNavigation: InventoryNavigationItem[] = [
   {
     id: "inventory-overview",
     label: "Overview",
-    href: "/products/inventory",
+    href: "/inventory/overview",
     icon: Boxes,
     description: "Review product-level stock availability and inventory status.",
   },

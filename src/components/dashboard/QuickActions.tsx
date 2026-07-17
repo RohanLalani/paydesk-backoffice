@@ -22,7 +22,7 @@ export const quickActions: QuickAction[] = [
   {
     id: "receive-inventory",
     label: "Receive Inventory",
-    href: "/inventory",
+    href: "/inventory/overview",
     permission: "manage_inventory",
     icon: PackageSearch,
   },
