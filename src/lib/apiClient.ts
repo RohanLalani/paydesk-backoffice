@@ -8,11 +8,13 @@ type ApiClientOptions = Omit<RequestInit, "body"> & {
 
 export class ApiClientError extends Error {
   status: number;
+  payload: unknown;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, payload?: unknown) {
     super(message);
     this.name = "ApiClientError";
     this.status = status;
+    this.payload = payload ?? null;
   }
 }
 
@@ -86,6 +88,7 @@ export async function apiClient<T>(
     throw new ApiClientError(
       getErrorMessage(payload) ?? "Request failed. Please try again.",
       response.status,
+      payload,
     );
   }
 

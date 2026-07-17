@@ -1,5 +1,5 @@
-import { InventorySectionPage } from "@/src/components/inventory/InventorySectionPage";
+import { PriceBookWorkspace } from "@/src/components/inventory/PriceBookWorkspace";
 
 export default function InventoryPriceBookPage() {
-  return <InventorySectionPage href="/inventory/price-book" />;
+  return <PriceBookWorkspace />;
 }

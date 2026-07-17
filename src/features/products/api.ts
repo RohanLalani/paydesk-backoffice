@@ -242,6 +242,76 @@ export type ProductRecord = {
   updatedAt?: string;
 };
 
+export type PriceBookSortField =
+  | "productNumber"
+  | "barcode"
+  | "name"
+  | "department"
+  | "category"
+  | "priceGroup"
+  | "unitRetail"
+  | "unitCost"
+  | "margin"
+  | "currentQuantity"
+  | "updatedAt";
+
+export type MarginStatus = "positive" | "zero" | "negative" | "unavailable";
+
+export type PriceBookProduct = {
+  id: string;
+  productNumber: number;
+  barcode: string;
+  name: string;
+  saleType: ProductSaleType;
+  unitRetail: string;
+  onlineRetailPrice: string | null;
+  unitCost: string | null;
+  unitCostAfterDiscountAndRebate: string | null;
+  margin: string | null;
+  defaultMargin: string | null;
+  unitsPerCase: number | null;
+  caseCost: string | null;
+  caseDiscount: string;
+  caseRebate: string;
+  currentQuantity: number;
+  minInventory: number | null;
+  maxInventory: number | null;
+  trackInventory: boolean;
+  allowNegativeInventory: boolean;
+  unitOfMeasure: string | null;
+  size: string | null;
+  minimumAge: number | null;
+  allowEbt: boolean;
+  isActive: boolean;
+  updatedAt: string;
+  department: { id: string; name: string };
+  category: { id: string; name: string } | null;
+  priceGroup: { id: string; name: string } | null;
+  tax: { id: string; name: string; rate: string; surchargeAmount: string };
+};
+
+export type PriceBookProductCollection = {
+  items: PriceBookProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type PriceBookProductQuery = {
+  search?: string;
+  departmentId?: string;
+  categoryId?: string;
+  priceGroupId?: string;
+  isActive?: boolean;
+  trackInventory?: boolean;
+  marginStatus?: MarginStatus;
+  sort?: PriceBookSortField;
+  order?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+};
+
 export type ProductPayload = Omit<
   ProductRecord,
   | "id"
@@ -273,6 +343,25 @@ export function getNextProductNumber(storeId: string) {
 
 export function lookupProductByProductNumber(storeId: string, productNumber: number) {
   return apiClient<ProductRecord>(`/stores/${storeId}/products/product-number/${productNumber}`);
+}
+
+export function listPriceBookProducts(storeId: string, query: PriceBookProductQuery = {}) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 50),
+    sort: query.sort ?? "productNumber",
+    order: query.order ?? "asc",
+  });
+
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.departmentId) params.set("departmentId", query.departmentId);
+  if (query.categoryId) params.set("categoryId", query.categoryId);
+  if (query.priceGroupId) params.set("priceGroupId", query.priceGroupId);
+  if (query.isActive !== undefined) params.set("isActive", String(query.isActive));
+  if (query.trackInventory !== undefined) params.set("trackInventory", String(query.trackInventory));
+  if (query.marginStatus) params.set("marginStatus", query.marginStatus);
+
+  return apiClient<PriceBookProductCollection>(`/stores/${storeId}/products?${params.toString()}`);
 }
 
 export async function createProduct(storeId: string, payload: ProductPayload) {
@@ -319,7 +408,7 @@ export async function getDepartments(storeId: string) {
   return normalizeDepartmentCollection(response);
 }
 
-export async function getStoreDepartments(storeId: string, query: { active?: boolean; search?: string } = {}) {
+export async function getStoreDepartments(storeId: string, query: { active?: boolean; search?: string; limit?: number } = {}) {
   const response = await apiClient<Department[] | DepartmentCollection>(
     `/stores/${storeId}/departments?${departmentSearchParams(query).toString()}`,
   );

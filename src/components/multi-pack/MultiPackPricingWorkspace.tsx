@@ -4,15 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera, PackagePlus, Search, X } from "lucide-react";
 import { BackOfficeShell } from "@/src/components/layout/BackOfficeShell";
+import { getSelectedStore } from "@/src/context/StoreContext";
 import { ApiClientError } from "@/src/lib/apiClient";
 import { validateBarcodeInput } from "@/src/features/products/barcodeValidation";
 import { lookupProductByBarcode, type ProductRecord } from "@/src/features/products/api";
 import {
   formatMultiPackType,
+  getMultiPackProposal,
   listProductMultiPacks,
   submitMultiPackProposal,
+  updateMultiPackProposal,
   type MultiPackType,
   type ProductMultiPack,
+  type SubmitMultiPackProposalInput,
 } from "@/src/features/multi-pack/api";
 
 type FormState = {
@@ -86,6 +90,8 @@ export function MultiPackPricingWorkspace() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [editingProposalId, setEditingProposalId] = useState<string | null>(null);
+  const [preloadingProposal, setPreloadingProposal] = useState(false);
 
   const units = /^\d+$/.test(form.unitsPerPack) ? Number(form.unitsPerPack) : 0;
   const retail = /^\d+(\.\d{1,2})?$/.test(form.multiPackRetail) ? Number(form.multiPackRetail) : 0;
@@ -108,6 +114,45 @@ export function MultiPackPricingWorkspace() {
   );
 
   useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get("productId");
+    const proposalId = params.get("proposalId");
+    const selectedStore = getSelectedStore();
+
+    if (!productId || !proposalId || !selectedStore) return;
+
+    queueMicrotask(() => {
+      setPreloadingProposal(true);
+      setError("");
+      setMessage("");
+
+      getMultiPackProposal(selectedStore.id, proposalId)
+        .then(async (proposal) => {
+          if (proposal.productId !== productId || proposal.status !== "PENDING") {
+            throw new Error("The pending proposal could not be matched to this product.");
+          }
+
+          setEditingProposalId(proposal.id);
+          setBarcode(proposal.product.barcode);
+          setProduct(proposal.product);
+          setForm({
+            type: proposal.proposedType,
+            unitsPerPack: String(proposal.proposedUnitsPerPack),
+            caseBarcode: proposal.proposedCaseBarcode ?? "",
+            multiPackRetail: proposal.proposedMultiPackRetail,
+            targetMultiPackId: proposal.targetMultiPackId ?? "",
+          });
+          setActivePacks(await listProductMultiPacks(selectedStore.id, proposal.productId));
+          setMessage("Editing a pending multi-pack review request.");
+        })
+        .catch((preloadError) => {
+          setError(getFriendlyError(preloadError, "We couldn't load this pending multi-pack request. Please return to review and try again."));
+        })
+        .finally(() => setPreloadingProposal(false));
+    });
+  }, []);
 
   async function handleLookup(storeId: string, rawBarcode = barcode) {
     setError("");
@@ -223,7 +268,7 @@ export function MultiPackPricingWorkspace() {
     setMessage("");
     setSubmitting(true);
     try {
-      await submitMultiPackProposal(storeId, {
+      const payload: SubmitMultiPackProposalInput = {
         productId: product.id,
         targetMultiPackId: form.targetMultiPackId || null,
         action: form.targetMultiPackId ? "UPDATE" : "CREATE",
@@ -231,13 +276,20 @@ export function MultiPackPricingWorkspace() {
         unitsPerPack: form.unitsPerPack,
         caseBarcode: form.type === "CASE_SALE" ? form.caseBarcode : null,
         multiPackRetail: form.multiPackRetail,
-      });
-      setMessage("Multi-pack pricing submitted for review.");
-      setBarcode("");
-      setProduct(null);
-      setActivePacks([]);
-      setForm(initialForm);
-      queueMicrotask(() => barcodeRef.current?.focus({ preventScroll: true }));
+      };
+
+      if (editingProposalId) {
+        await updateMultiPackProposal(storeId, editingProposalId, payload);
+        setMessage("Pending multi-pack review request updated.");
+      } else {
+        await submitMultiPackProposal(storeId, payload);
+        setMessage("Multi-pack pricing submitted for review.");
+        setBarcode("");
+        setProduct(null);
+        setActivePacks([]);
+        setForm(initialForm);
+        queueMicrotask(() => barcodeRef.current?.focus({ preventScroll: true }));
+      }
     } catch (submitError) {
       setError(getFriendlyError(submitError, "The multi-pack proposal could not be submitted. Please try again."));
     } finally {
@@ -286,6 +338,7 @@ export function MultiPackPricingWorkspace() {
                 {error} {error.startsWith("Item not found") ? <Link href="/products/items" className="underline">Go to Items</Link> : null}
               </div>
             ) : null}
+            {preloadingProposal ? <div className={`rounded-[8px] border p-4 text-sm font-bold ${nested}`}>Loading pending review request...</div> : null}
 
             <div className={`rounded-[8px] border p-5 ${panel}`}>
               <h2 className="text-base font-extrabold">Barcode Lookup</h2>
@@ -335,7 +388,14 @@ export function MultiPackPricingWorkspace() {
                 </div>
 
                 <div className={`rounded-[8px] border p-5 ${panel}`}>
-                  <h2 className="text-base font-extrabold">Multi-pack configuration</h2>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-base font-extrabold">Multi-pack configuration</h2>
+                    {editingProposalId ? (
+                      <span className="rounded-[4px] bg-[#4f2df2]/15 px-2 py-1 text-xs font-extrabold text-[#7c5cff]">
+                        Editing pending review request
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">
                     <label className="text-sm font-bold">
                       Number of units in pack
@@ -369,8 +429,13 @@ export function MultiPackPricingWorkspace() {
                     </div>
                   </div>
                   <button type="button" disabled={submitting} onClick={() => void handleSubmit(selectedStore.id)} className="mt-5 h-11 rounded-[8px] bg-[#4f2df2] px-5 text-sm font-extrabold text-white disabled:opacity-50">
-                    Submit for Review
+                    {editingProposalId ? "Update Review Request" : "Submit for Review"}
                   </button>
+                  {editingProposalId ? (
+                    <Link href="/send-to-pos/multi-pack-review" className={`ml-0 mt-3 inline-flex h-11 items-center rounded-[8px] border px-5 text-sm font-extrabold sm:ml-3 sm:mt-0 ${input}`}>
+                      Return to Multi Pack Review
+                    </Link>
+                  ) : null}
                 </div>
               </>
             ) : null}

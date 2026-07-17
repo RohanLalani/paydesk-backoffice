@@ -67,6 +67,19 @@ export type MultiPackLogCollection = {
   limit: number;
 };
 
+export type BulkApprovalIssue = {
+  proposalId: string;
+  productName: string;
+  reason: string;
+};
+
+export type BulkApprovalResponse = {
+  approvedCount: number;
+  failedCount: number;
+  approvedProposalIds: string[];
+  failures: BulkApprovalIssue[];
+};
+
 export type SubmitMultiPackProposalInput = {
   productId: string;
   targetMultiPackId?: string | null;
@@ -88,6 +101,17 @@ export function submitMultiPackProposal(storeId: string, input: SubmitMultiPackP
     method: "POST",
     body: input,
   });
+}
+
+export function updateMultiPackProposal(storeId: string, proposalId: string, input: SubmitMultiPackProposalInput) {
+  return apiClient<MultiPackProposal>(`/stores/${storeId}/multi-pack-proposals/${proposalId}`, {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export function getMultiPackProposal(storeId: string, proposalId: string) {
+  return apiClient<MultiPackProposal>(`/stores/${storeId}/multi-pack-proposals/${proposalId}`);
 }
 
 export function listMultiPackProposals(
@@ -124,6 +148,13 @@ export function approveMultiPackProposal(storeId: string, proposalId: string, re
       body: { reviewNote: reviewNote ?? null },
     },
   );
+}
+
+export function approveAllMultiPackProposals(storeId: string, proposalIds?: string[]) {
+  return apiClient<BulkApprovalResponse>(`/stores/${storeId}/multi-pack-proposals/approve-all`, {
+    method: "POST",
+    body: proposalIds ? { proposalIds } : {},
+  });
 }
 
 export function rejectMultiPackProposal(storeId: string, proposalId: string, reason: string) {
