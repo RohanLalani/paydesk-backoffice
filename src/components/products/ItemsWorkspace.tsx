@@ -212,6 +212,25 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
     };
   }, [storeId]);
 
+  const loadProduct = useCallback((product: ProductRecord) => {
+    if (product.department && !departments.some((item) => item.id === product.departmentId)) {
+      setDepartments((current) => sortRefs([...current, { ...product.department!, isActive: false }]));
+    }
+    if (product.priceGroup && product.priceGroupId && !priceGroups.some((item) => item.id === product.priceGroupId)) {
+      setPriceGroups((current) => sortRefs([...current, { ...product.priceGroup!, name: `${product.priceGroup!.name} (Inactive)`, isActive: false }]));
+    }
+    if (product.productCategory && product.productCategoryId && !categories.some((item) => item.id === product.productCategoryId)) {
+      setCategories((current) => sortRefs([...current, { ...product.productCategory!, name: `${product.productCategory!.name} (Inactive)`, isActive: false }]));
+    }
+
+    setForm(productToForm(product));
+    setProductNumber(product.productNumber);
+    setPriceGroupDefaultMessage("");
+    setMode("edit");
+    setProductId(product.id);
+    setUpdatedAt(product.updatedAt ?? null);
+  }, [categories, departments, priceGroups]);
+
   useEffect(() => {
     if (!requestedProductId || referenceLoading || !departments.length) {
       return;
@@ -443,25 +462,6 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
       setIsSaving(false);
     }
   }
-
-  const loadProduct = useCallback((product: ProductRecord) => {
-    if (product.department && !departments.some((item) => item.id === product.departmentId)) {
-      setDepartments((current) => sortRefs([...current, { ...product.department!, isActive: false }]));
-    }
-    if (product.priceGroup && product.priceGroupId && !priceGroups.some((item) => item.id === product.priceGroupId)) {
-      setPriceGroups((current) => sortRefs([...current, { ...product.priceGroup!, name: `${product.priceGroup!.name} (Inactive)`, isActive: false }]));
-    }
-    if (product.productCategory && product.productCategoryId && !categories.some((item) => item.id === product.productCategoryId)) {
-      setCategories((current) => sortRefs([...current, { ...product.productCategory!, name: `${product.productCategory!.name} (Inactive)`, isActive: false }]));
-    }
-
-    setForm(productToForm(product));
-    setProductNumber(product.productNumber);
-    setPriceGroupDefaultMessage("");
-    setMode("edit");
-    setProductId(product.id);
-    setUpdatedAt(product.updatedAt ?? null);
-  }, [categories, departments, priceGroups]);
 
   function resetForm() {
     if (isSaving) return;

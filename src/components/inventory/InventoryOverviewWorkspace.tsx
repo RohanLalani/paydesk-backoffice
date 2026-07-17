@@ -19,14 +19,32 @@ type ThemeClasses = {
   border: string;
   muted: string;
   input: string;
-  badge: string;
   row: string;
+};
+
+type GroupedInventoryAlert = {
+  productId: string;
+  productNumber: number;
+  barcode: string;
+  productName: string;
+  departmentName: string | null;
+  currentQuantity: number;
+  minimumInventory: number | null;
+  alertTypes: InventoryOverviewAlertType[];
 };
 
 const RANGE_OPTIONS: Array<{ value: InventoryOverviewRange; label: string }> = [
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
   { value: "90d", label: "Last 90 days" },
+];
+
+const ALERT_TYPE_ORDER: InventoryOverviewAlertType[] = [
+  "NEGATIVE_STOCK",
+  "OUT_OF_STOCK",
+  "LOW_STOCK",
+  "MISSING_COST",
+  "MISSING_MINIMUM_INVENTORY",
 ];
 
 function classesFor(theme: "light" | "dark"): ThemeClasses {
@@ -40,7 +58,6 @@ function classesFor(theme: "light" | "dark"): ThemeClasses {
     input: isDark
       ? "border-slate-400/15 bg-white/[0.04] text-white"
       : "border-[#ded8f3] bg-white text-slate-950",
-    badge: isDark ? "bg-white/[0.06] text-slate-300" : "bg-[#f0edff] text-[#4f2df2]",
     row: isDark ? "hover:bg-white/[0.03]" : "hover:bg-[#fbfaff]",
   };
 }
@@ -75,7 +92,42 @@ function formatDate(value: string | null) {
 }
 
 function alertTypeLabel(type: InventoryOverviewAlertType) {
-  return type.split("_").map((part) => part.charAt(0) + part.slice(1).toLowerCase()).join(" ");
+  switch (type) {
+    case "NEGATIVE_STOCK":
+      return "Negative Inventory";
+    case "OUT_OF_STOCK":
+      return "Out of Stock";
+    case "LOW_STOCK":
+      return "Low Stock";
+    case "MISSING_COST":
+      return "Missing Cost";
+    case "MISSING_MINIMUM_INVENTORY":
+      return "Missing Minimum Inventory";
+    default:
+      return type;
+  }
+}
+
+function alertTypeRank(type: InventoryOverviewAlertType) {
+  const index = ALERT_TYPE_ORDER.indexOf(type);
+  return index === -1 ? ALERT_TYPE_ORDER.length : index;
+}
+
+function alertTypeClass(type: InventoryOverviewAlertType, isDark: boolean) {
+  switch (type) {
+    case "NEGATIVE_STOCK":
+      return isDark ? "bg-rose-500/20 text-rose-200" : "bg-rose-500/12 text-rose-700";
+    case "OUT_OF_STOCK":
+      return isDark ? "bg-red-500/20 text-red-200" : "bg-red-500/12 text-red-700";
+    case "LOW_STOCK":
+      return isDark ? "bg-amber-500/20 text-amber-200" : "bg-amber-500/12 text-amber-700";
+    case "MISSING_COST":
+      return isDark ? "bg-yellow-500/20 text-yellow-100" : "bg-yellow-500/12 text-yellow-800";
+    case "MISSING_MINIMUM_INVENTORY":
+      return isDark ? "bg-white/[0.08] text-slate-200" : "bg-slate-200 text-slate-700";
+    default:
+      return isDark ? "bg-white/[0.08] text-slate-200" : "bg-slate-200 text-slate-700";
+  }
 }
 
 function statusBadge(status: InventoryOverviewStatus) {
@@ -88,6 +140,48 @@ function statusClass(status: InventoryOverviewStatus) {
   if (status === "NEGATIVE_STOCK") return "bg-rose-500/15 text-rose-500";
   if (status === "OUT_OF_STOCK") return "bg-amber-500/15 text-amber-500";
   return "bg-[#4f2df2]/12 text-[#4f2df2]";
+}
+
+function groupInventoryAlerts(alerts: InventoryOverviewResponse["alerts"]) {
+  const grouped = new Map<string, GroupedInventoryAlert>();
+
+  for (const alert of alerts) {
+    const existing = grouped.get(alert.productId);
+
+    if (!existing) {
+      grouped.set(alert.productId, {
+        productId: alert.productId,
+        productNumber: alert.productNumber,
+        barcode: alert.barcode,
+        productName: alert.productName,
+        departmentName: alert.departmentName,
+        currentQuantity: alert.currentQuantity,
+        minimumInventory: alert.minimumInventory,
+        alertTypes: [alert.type],
+      });
+      continue;
+    }
+
+    if (!existing.alertTypes.includes(alert.type)) {
+      existing.alertTypes.push(alert.type);
+    }
+  }
+
+  return [...grouped.values()]
+    .map((alert) => ({
+      ...alert,
+      alertTypes: [...alert.alertTypes].sort((left, right) => alertTypeRank(left) - alertTypeRank(right)),
+    }))
+    .sort((left, right) => {
+      const severityDelta = alertTypeRank(left.alertTypes[0] ?? "MISSING_MINIMUM_INVENTORY")
+        - alertTypeRank(right.alertTypes[0] ?? "MISSING_MINIMUM_INVENTORY");
+
+      if (severityDelta !== 0) {
+        return severityDelta;
+      }
+
+      return left.productName.localeCompare(right.productName);
+    });
 }
 
 export function InventoryOverviewWorkspace() {
@@ -151,6 +245,11 @@ function InventoryOverviewContent({ theme, selectedStore }: BackOfficeShellConte
       },
     ];
   }, [overview]);
+
+  const groupedAlerts = useMemo(
+    () => (overview ? groupInventoryAlerts(overview.alerts).slice(0, 10) : []),
+    [overview],
+  );
 
   return (
     <section className="space-y-5">
@@ -236,7 +335,7 @@ function InventoryOverviewContent({ theme, selectedStore }: BackOfficeShellConte
       <CardShell title="Inventory Alerts" actionHref="/inventory/price-book" actionLabel="View All" styles={styles}>
         {loading && !overview ? (
           <ListSkeleton />
-        ) : overview && overview.alerts.length ? (
+        ) : overview && groupedAlerts.length ? (
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <AlertCount label="Out of Stock" value={overview.alertCounts.outOfStock} styles={styles} />
@@ -246,18 +345,27 @@ function InventoryOverviewContent({ theme, selectedStore }: BackOfficeShellConte
               <AlertCount label="Missing Minimum" value={overview.alertCounts.missingMinimumInventory} styles={styles} />
             </div>
             <div className={`overflow-hidden rounded-[8px] border ${styles.nested}`}>
-              {overview.alerts.map((alert) => (
+              {groupedAlerts.map((alert) => (
                 <Link
-                  key={`${alert.productId}-${alert.type}`}
+                  key={alert.productId}
                   href={`/products/items?productId=${encodeURIComponent(alert.productId)}`}
+                  aria-label={`View item ${alert.productName}. Alerts: ${alert.alertTypes.map(alertTypeLabel).join(", ")}`}
                   className={`flex flex-col gap-3 border-b px-4 py-4 transition last:border-b-0 sm:flex-row sm:items-center sm:justify-between ${styles.border} ${styles.row}`}
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div
+                      className="flex flex-wrap items-center gap-2"
+                      aria-label={`Alert status ${alert.alertTypes.map(alertTypeLabel).join(", ")}`}
+                    >
                       <span className="text-sm font-extrabold">#{alert.productNumber}</span>
-                      <span className={`inline-flex rounded-[4px] px-2 py-1 text-[11px] font-extrabold ${styles.badge}`}>
-                        {alertTypeLabel(alert.type)}
-                      </span>
+                      {alert.alertTypes.map((type) => (
+                        <span
+                          key={`${alert.productId}-${type}`}
+                          className={`inline-flex rounded-[4px] px-2 py-1 text-[11px] font-extrabold ${alertTypeClass(type, styles.isDark)}`}
+                        >
+                          {alertTypeLabel(type)}
+                        </span>
+                      ))}
                     </div>
                     <p className="mt-2 truncate text-sm font-bold">{alert.productName}</p>
                     <p className={`mt-1 text-xs font-semibold ${styles.muted}`}>
@@ -321,7 +429,7 @@ function InventoryOverviewContent({ theme, selectedStore }: BackOfficeShellConte
           )}
         </CardShell>
 
-        <CardShell title="Dead Stock" actionHref="/inventory/price-book" actionLabel="View in Price Book" styles={styles}>
+        <CardShell title="Dead Stock" styles={styles}>
           {loading && !overview ? (
             <ListSkeleton />
           ) : overview && overview.deadStock.length ? (
@@ -342,7 +450,7 @@ function InventoryOverviewContent({ theme, selectedStore }: BackOfficeShellConte
           )}
         </CardShell>
 
-        <CardShell title="Low Stock" actionHref="/inventory/price-book" actionLabel="View in Price Book" styles={styles}>
+        <CardShell title="Low Stock" styles={styles}>
           {loading && !overview ? (
             <ListSkeleton />
           ) : overview && overview.lowStock.length ? (
