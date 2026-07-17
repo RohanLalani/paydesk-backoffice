@@ -657,7 +657,7 @@ function ItemsWorkspaceContent({ theme, storeId, canEdit }: { theme: "light" | "
                 <div className="md:col-span-2">
                   <p className={`text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>Tax inherited from department</p>
                   <div className={`mt-2 flex min-h-12 items-center rounded-[8px] border px-4 text-sm font-bold ${inputClass}`}>
-                    {inheritedTax ? `${inheritedTax.name}${inheritedTax.rate === undefined ? "" : ` (${Number(inheritedTax.rate * 100).toFixed(2)}%)`}` : "Select a department with a default tax"}
+                    {inheritedTax ? formatTaxReference(inheritedTax) : "Select a department with a default tax"}
                   </div>
                   {fieldErrors.taxId ? <p className="mt-2 text-xs font-bold text-red-500">{fieldErrors.taxId}</p> : null}
                 </div>
@@ -1080,6 +1080,18 @@ function validateForm(form: ItemFormState, hasDepartments: boolean) {
   if (min !== null && max !== null && max < min) errors.maxInventory = "Maximum inventory cannot be less than minimum.";
 
   return { ok: Object.keys(errors).length === 0, errors };
+}
+
+function formatTaxReference(tax: ProductReference) {
+  const rate = tax.rate === undefined ? "" : `${formatTaxPercent(Number(tax.rate) * 100)}`;
+  const surcharge = Number(tax.surchargeAmount ?? 0);
+  const formula = surcharge > 0 ? `${rate} + $${surcharge.toFixed(2)}` : rate;
+
+  return formula ? `${tax.name} - ${formula}` : tax.name;
+}
+
+function formatTaxPercent(value: number) {
+  return `${value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}%`;
 }
 
 function requireMoney(value: string, field: keyof ItemFormState, label: string, errors: FieldErrors) {

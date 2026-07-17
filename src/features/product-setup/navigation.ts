@@ -1,7 +1,15 @@
-import { FolderTree, LayoutGrid, Tags } from "lucide-react";
+import { BadgePercent, FolderTree, LayoutGrid, Tags } from "lucide-react";
 import type { SecondaryNavigationItem } from "@/src/features/navigation/primaryNavigation";
 
 export const productSetupNavigation: SecondaryNavigationItem[] = [
+  {
+    id: "taxes",
+    label: "Tax Setup",
+    href: "/product-setup/taxes",
+    icon: BadgePercent,
+    description: "Configure store tax rates.",
+    exact: true,
+  },
   {
     id: "departments",
     label: "Departments",

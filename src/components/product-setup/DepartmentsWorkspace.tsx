@@ -14,6 +14,7 @@ import {
   type DepartmentMinimumAge,
   type DepartmentType,
   type ProductReference,
+  type UpdateDepartmentInput,
 } from "@/src/features/products/api";
 
 type DepartmentFormState = {
@@ -236,7 +237,7 @@ function DepartmentsWorkspaceContent({
 
   function startEdit(department: Department) {
     if (department.defaultTax && !taxes.some((tax) => tax.id === department.defaultTaxId)) {
-      setTaxes((current) => [...current, { ...department.defaultTax!, name: `${department.defaultTax!.name} (Inactive)` }]);
+      setTaxes((current) => [...current, { ...department.defaultTax!, isActive: false }]);
     }
     setEditingDepartment(department);
     setForm({
@@ -289,7 +290,11 @@ function DepartmentsWorkspaceContent({
 
     try {
       if (editingDepartment) {
-        await updateDepartment(storeId, editingDepartment.id, parsed.data);
+        const payload: UpdateDepartmentInput = { ...parsed.data };
+        if (payload.defaultTaxId === editingDepartment.defaultTaxId) {
+          delete payload.defaultTaxId;
+        }
+        await updateDepartment(storeId, editingDepartment.id, payload);
         setSuccessMessage("Department updated.");
       } else {
         await createDepartment(storeId, parsed.data);
@@ -358,15 +363,20 @@ function DepartmentsWorkspaceContent({
                 {departmentTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </FormSelect>
             </Field>
-            <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax rate before creating a department." : undefined}>
+            <Field label="Default tax rate" error={fieldErrors.defaultTaxId} helper={!taxes.length ? "Create an active tax before creating a department." : undefined}>
               <FormSelect value={form.defaultTaxId} onChange={(event) => updateForm("defaultTaxId", event.target.value)} disabled={!canEdit || isSaving || !taxes.length} selectClassName={inputClass}>
                 <option value="">Select tax</option>
                 {taxes.map((tax) => (
                   <option key={tax.id} value={tax.id}>
-                    {tax.rate === undefined ? tax.name : `${tax.name} - ${Number(tax.rate * 100).toFixed(2)}%`}
+                    {formatTaxOption(tax)}
                   </option>
                 ))}
               </FormSelect>
+              {!taxes.length ? (
+                <a href="/product-setup/taxes" className="mt-2 inline-flex text-xs font-extrabold text-[#4f2df2] hover:underline">
+                  Open Tax Setup
+                </a>
+              ) : null}
             </Field>
             <Field label="Minimum age" error={fieldErrors.minimumAge}>
               <FormSelect value={form.minimumAge} onChange={(event) => updateForm("minimumAge", event.target.value as DepartmentMinimumAge)} disabled={!canEdit || isSaving} selectClassName={inputClass}>
@@ -520,7 +530,7 @@ function DepartmentsWorkspaceContent({
                         </td>
                         <td className="px-4 py-3"><Badge tone="neutral">{departmentTypeLabel(department.type)}</Badge></td>
                         <td className="px-4 py-3 font-semibold">
-                          {department.defaultTax ? `${department.defaultTax.name}${department.defaultTax.rate === undefined ? "" : ` (${Number(department.defaultTax.rate * 100).toFixed(2)}%)`}` : "Configure tax"}
+                          {department.defaultTax ? formatTaxOption(department.defaultTax) : "Configure tax"}
                         </td>
                         <td className="px-4 py-3"><Badge tone="neutral">{minimumAgeLabel(department.minimumAge)}</Badge></td>
                         <td className="px-4 py-3">
@@ -716,6 +726,19 @@ function minimumAgeLabel(value: DepartmentMinimumAge) {
 
 function numberInputValue(value: number | null | undefined) {
   return value === null || value === undefined ? "" : String(value);
+}
+
+function formatTaxOption(tax: ProductReference) {
+  const rate = tax.rate === undefined ? "" : `${formatPercent(Number(tax.rate) * 100)}`;
+  const surcharge = Number(tax.surchargeAmount ?? 0);
+  const formula = surcharge > 0 ? `${rate} + $${surcharge.toFixed(2)}` : rate;
+  const inactive = tax.isActive === false ? " (Inactive)" : "";
+
+  return formula ? `${tax.name} - ${formula}${inactive}` : `${tax.name}${inactive}`;
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}%`;
 }
 
 function DeactivateDialog({

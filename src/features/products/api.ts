@@ -7,6 +7,7 @@ export type ProductReference = {
   id: string;
   name: string;
   rate?: number;
+  surchargeAmount?: string;
   defaultUnitRetail?: string;
   departmentId?: string | null;
   departmentName?: string | null;
@@ -20,6 +21,32 @@ export type ProductReference = {
   minimumAge?: DepartmentMinimumAge;
   defaultRetailMargin?: number | null;
   isActive?: boolean;
+};
+
+export type TaxRecord = {
+  id: string;
+  storeId: string;
+  name: string;
+  rate: string;
+  surchargeAmount: string;
+  isActive: boolean;
+  departmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TaxCollection = {
+  items: TaxRecord[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type TaxPayload = {
+  name: string;
+  rate: string;
+  surchargeAmount: string;
+  isActive: boolean;
 };
 
 export type DepartmentType = "merchandise" | "lottery" | "fuel" | "misc_services";
@@ -426,6 +453,46 @@ export function getPriceGroupProducts(
   );
 }
 
-export function getTaxes(storeId: string) {
-  return apiClient<ProductReference[]>(`/product/tax/store/${storeId}`);
+export async function getTaxes(storeId: string) {
+  const response = await getStoreTaxes(storeId, { active: true, limit: 100 });
+
+  return response.items.map<ProductReference>((tax) => ({
+    id: tax.id,
+    storeId: tax.storeId,
+    name: tax.name,
+    rate: Number(tax.rate) / 100,
+    surchargeAmount: tax.surchargeAmount,
+    isActive: tax.isActive,
+  }));
+}
+
+export function getStoreTaxes(
+  storeId: string,
+  query: { active?: boolean; search?: string; page?: number; limit?: number; sort?: string; order?: "asc" | "desc" } = {},
+) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 100),
+    sort: query.sort ?? "name",
+    order: query.order ?? "asc",
+  });
+
+  if (query.active !== undefined) params.set("active", String(query.active));
+  if (query.search) params.set("search", query.search);
+
+  return apiClient<TaxCollection>(`/stores/${storeId}/taxes?${params.toString()}`);
+}
+
+export function createTax(storeId: string, payload: TaxPayload) {
+  return apiClient<TaxRecord>(`/stores/${storeId}/taxes`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateTax(storeId: string, taxId: string, payload: Partial<TaxPayload>) {
+  return apiClient<TaxRecord>(`/stores/${storeId}/taxes/${taxId}`, {
+    method: "PATCH",
+    body: payload,
+  });
 }
