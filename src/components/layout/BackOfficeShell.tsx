@@ -21,6 +21,7 @@ type BackOfficeShellProps = {
   activeItem?: BackOfficeNavKey;
   requiredPermission?: string;
   sectionSidebar?: (context: BackOfficeShellContext) => ReactNode;
+  layoutMode?: "default" | "workspace";
   children: (context: BackOfficeShellContext) => ReactNode;
 };
 
@@ -59,6 +60,7 @@ export function BackOfficeShell({
   activeItem = "dashboard",
   requiredPermission,
   sectionSidebar,
+  layoutMode = "default",
   children,
 }: BackOfficeShellProps) {
   const router = useRouter();
@@ -137,7 +139,7 @@ export function BackOfficeShell({
   );
   const activePrimaryItem = resolveRouteMatch(pathname, visiblePrimaryItems);
   const automaticSectionSidebar =
-    activePrimaryItem?.secondaryNavigation?.length && activePrimaryItem.secondaryLabel ? (
+    layoutMode === "workspace" ? null : activePrimaryItem?.secondaryNavigation?.length && activePrimaryItem.secondaryLabel ? (
       <ContextualSidebar
         label={activePrimaryItem.secondaryLabel}
         items={activePrimaryItem.secondaryNavigation}
@@ -222,7 +224,7 @@ export function BackOfficeShell({
             {renderedSectionSidebar}
 
             <div
-              className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:px-8 lg:py-7"
+              className={`mx-auto w-full px-4 py-5 sm:px-6 lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:px-8 lg:py-7 ${layoutMode === "workspace" ? "max-w-none" : "max-w-[1280px]"}`}
               role="main"
               tabIndex={-1}
             >

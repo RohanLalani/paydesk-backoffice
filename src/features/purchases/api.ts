@@ -125,6 +125,47 @@ export type PurchaseListQuery = {
   limit?: number;
 };
 
+export type CreatePurchaseLineItemInput = {
+  productId?: string;
+  barcode?: string;
+  description?: string;
+  quantity: number;
+  unitsPerCase?: number | null;
+  caseCost?: string | null;
+  caseDiscount?: string | null;
+  unitCost?: string | null;
+  currentRetail?: string | null;
+  newRetail?: string | null;
+  rebate?: string | null;
+  departmentId?: string | null;
+  priceGroupId?: string | null;
+  categoryId?: string | null;
+  entryType?: "purchase" | "return";
+};
+
+export type CreatePurchaseExpenseInput = {
+  description: string;
+  amount: string;
+  departmentId?: string | null;
+};
+
+export type CreatePurchaseInput = {
+  purchaseDate: string;
+  payeeId: string;
+  invoiceNumber: string;
+  purchaseType: PurchaseType;
+  status?: PurchaseStatus;
+  manualEntry?: {
+    defaultMargin?: string | null;
+    cost?: string | null;
+    retail?: string | null;
+    margin?: string | null;
+    departmentId?: string | null;
+  };
+  lineItems?: CreatePurchaseLineItemInput[];
+  expenses?: CreatePurchaseExpenseInput[];
+};
+
 export function listStorePayees(
   storeId: string,
   query: { active?: boolean; search?: string; page?: number; limit?: number } = {},
@@ -160,4 +201,11 @@ export function listStorePurchases(storeId: string, query: PurchaseListQuery = {
 
 export function getStorePurchase(storeId: string, purchaseId: string) {
   return apiClient<PurchaseDetail>(`/stores/${storeId}/purchases/${purchaseId}`);
+}
+
+export function createStorePurchase(storeId: string, payload: CreatePurchaseInput) {
+  return apiClient<PurchaseDetail>(`/stores/${storeId}/purchases`, {
+    method: "POST",
+    body: payload,
+  });
 }
