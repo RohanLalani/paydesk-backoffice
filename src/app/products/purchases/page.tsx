@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { permanentRedirect } from "next/navigation";
 
 export default function ProductPurchasesPage() {
-  return <ProductSectionPage href="/products/purchases" />;
+  permanentRedirect("/inventory/purchases");
 }

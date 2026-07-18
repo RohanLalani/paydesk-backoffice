@@ -26,7 +26,7 @@ export const inventoryNavigation: InventoryNavigationItem[] = [
   {
     id: "purchases",
     label: "Purchases",
-    href: "/products/purchases",
+    href: "/inventory/purchases",
     icon: ShoppingCart,
     description: "Track product purchasing workflows and supplier intake.",
   },
