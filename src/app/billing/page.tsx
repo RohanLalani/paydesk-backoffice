@@ -101,7 +101,7 @@ function StoreBillingContent({ selectedStore, theme }: BackOfficeShellContext) {
                 <dd className="mt-1 text-sm font-bold">{money(summary.loyaltyMonthlyAmount)}</dd>
               </div>
             </dl>
-            <Link href="/services" className="mt-4 inline-flex h-10 items-center rounded-[7px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd]">
+            <Link href="/settings/store/services" className="mt-4 inline-flex h-10 items-center rounded-[7px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd]">
               Manage services
             </Link>
           </div>

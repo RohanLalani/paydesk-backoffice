@@ -2,6 +2,7 @@ import { apiClient } from "@/src/lib/apiClient";
 
 export type PurchaseType = "CASH_DAILY" | "CHECK" | "CREDIT";
 export type PurchaseStatus = "DRAFT" | "OPEN" | "VERIFIED" | "VOIDED";
+export type PayeeType = "VENDOR" | "MISC" | "EXPENSE";
 export type PurchaseSortField =
   | "purchaseDate"
   | "payee"
@@ -27,6 +28,8 @@ export type Payee = {
   postalCode: string | null;
   notes: string | null;
   isActive: boolean;
+  payeeType: PayeeType;
+  allowPosPayments: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -36,6 +39,23 @@ export type PayeeCollection = {
   total: number;
   page: number;
   limit: number;
+};
+
+export type PayeeInput = {
+  name: string;
+  accountNumber?: string | null;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+  payeeType: PayeeType;
+  allowPosPayments: boolean;
 };
 
 export type PurchaseListItem = {
@@ -153,7 +173,7 @@ export type CreatePurchaseInput = {
   purchaseDate: string;
   payeeId: string;
   invoiceNumber: string;
-  purchaseType: PurchaseType;
+  type: PurchaseType;
   status?: PurchaseStatus;
   manualEntry?: {
     defaultMargin?: string | null;
@@ -179,6 +199,20 @@ export function listStorePayees(
   if (query.search?.trim()) params.set("search", query.search.trim());
 
   return apiClient<PayeeCollection>(`/stores/${storeId}/payees?${params.toString()}`);
+}
+
+export function createStorePayee(storeId: string, payload: PayeeInput) {
+  return apiClient<Payee>(`/stores/${storeId}/payees`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateStorePayee(storeId: string, payeeId: string, payload: Partial<PayeeInput>) {
+  return apiClient<Payee>(`/stores/${storeId}/payees/${payeeId}`, {
+    method: "PATCH",
+    body: payload,
+  });
 }
 
 export function listStorePurchases(storeId: string, query: PurchaseListQuery = {}) {

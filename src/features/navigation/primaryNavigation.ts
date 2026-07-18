@@ -1,6 +1,7 @@
 import {
   Blocks,
   Boxes,
+  Building2,
   ClipboardList,
   CreditCard,
   Gauge,
@@ -54,6 +55,8 @@ export type SecondaryNavigationItem = {
   icon: LucideIcon;
   description: string;
   exact?: boolean;
+  match?: string[];
+  permission?: string;
 };
 
 export type PrimaryNavigationItem = {
@@ -153,7 +156,55 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     href: "/settings/store",
     icon: Store,
     category: "setup",
-    match: ["/settings/store"],
+    match: ["/settings/store", "/permissions", "/services", "/billing"],
+    secondaryLabel: "Store Settings",
+    secondaryNavigation: [
+      {
+        id: "general",
+        label: "General",
+        href: "/settings/store",
+        icon: Store,
+        description: "Manage store details and included features.",
+        exact: true,
+        match: ["/settings/store", "/settings/store/general"],
+      },
+      {
+        id: "permissions",
+        label: "Permissions",
+        href: "/settings/store/permissions",
+        icon: ShieldCheck,
+        description: "Manage store role and permission access.",
+        exact: true,
+        match: ["/settings/store/permissions", "/permissions"],
+        permission: "manage_permissions",
+      },
+      {
+        id: "services",
+        label: "Services",
+        href: "/settings/store/services",
+        icon: Blocks,
+        description: "Manage included and paid store services.",
+        exact: true,
+        match: ["/settings/store/services", "/services"],
+      },
+      {
+        id: "billing",
+        label: "Billing",
+        href: "/settings/store/billing",
+        icon: CreditCard,
+        description: "Review store subscription and add-on billing.",
+        exact: true,
+        match: ["/settings/store/billing", "/billing"],
+      },
+      {
+        id: "payees",
+        label: "Payees",
+        href: "/settings/store/payees",
+        icon: Building2,
+        description: "Manage store suppliers and vendors.",
+        exact: true,
+      },
+    ],
   },
   {
     key: "productSetup",
@@ -167,14 +218,6 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     secondaryNavigation: productSetupNavigation,
   },
   {
-    key: "permissions",
-    label: "Permissions",
-    href: "/permissions",
-    icon: ShieldCheck,
-    category: "setup",
-    permission: "manage_permissions",
-  },
-  {
     key: "loyalty",
     label: "Loyalty",
     href: "/loyalty",
@@ -183,24 +226,10 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     requires: "loyalty",
   },
   {
-    key: "services",
-    label: "Services",
-    href: "/services",
-    icon: Blocks,
-    category: "setup",
-  },
-  {
     key: "bank",
     label: "Bank",
     href: "/bank",
     icon: Landmark,
-    category: "setup",
-  },
-  {
-    key: "billing",
-    label: "Billing",
-    href: "/billing",
-    icon: CreditCard,
     category: "setup",
   },
   {
@@ -222,6 +251,14 @@ export function canShowPrimaryNavigationItem(
     return false;
   }
 
+  if (!item.permission || !account || account.role === "owner" || account.role === "partner") {
+    return true;
+  }
+
+  return account.permissions?.includes(item.permission) === true;
+}
+
+export function canShowSecondaryNavigationItem(account: AuthAccount | null, item: SecondaryNavigationItem) {
   if (!item.permission || !account || account.role === "owner" || account.role === "partner") {
     return true;
   }

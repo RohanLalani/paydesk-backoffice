@@ -56,7 +56,7 @@ function StoreSettingsForm({ selectedStore, capabilities, theme }: BackOfficeShe
 
   return (
     <section className={`rounded-[8px] border p-6 ${isDark ? "border-slate-400/15 bg-[#0f172a]" : "border-[#ded8f3] bg-white"}`}>
-      <h1 className="text-2xl font-bold tracking-normal">Store Settings</h1>
+      <h1 className="text-2xl font-bold tracking-normal">General</h1>
       <p className={`mt-2 max-w-[720px] text-sm font-semibold leading-6 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
         Manage store details and included feature availability.
       </p>

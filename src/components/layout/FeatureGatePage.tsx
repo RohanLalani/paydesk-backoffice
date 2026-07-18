@@ -35,7 +35,7 @@ export function FeatureGatePage({
                   {unavailable}
                 </p>
                 <a
-                  href="/services"
+                  href="/settings/store/services"
                   className="mt-4 inline-flex h-10 items-center rounded-[7px] bg-[#4f2df2] px-4 text-sm font-bold text-white transition hover:bg-[#4322dd] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7c5cff]/35"
                 >
                   Manage services

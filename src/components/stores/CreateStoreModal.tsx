@@ -196,7 +196,7 @@ export function CreateStoreModal({
             recipeSuiteEnabled,
           }),
         );
-        router.push("/billing");
+        router.push("/settings/store/billing");
         return;
       }
 

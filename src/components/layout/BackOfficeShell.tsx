@@ -14,7 +14,11 @@ import { applyThemeToDocument, getStoredTheme, type PayDeskTheme } from "@/src/l
 import { BackOfficeSidebar, type BackOfficeNavKey } from "@/src/components/layout/BackOfficeSidebar";
 import { ContextualSidebar } from "@/src/components/layout/ContextualSidebar";
 import { ENABLE_LIVE_SUPPORT, LiveSupportCard } from "@/src/components/support/LiveSupportCard";
-import { canShowPrimaryNavigationItem, primaryNavigation } from "@/src/features/navigation/primaryNavigation";
+import {
+  canShowPrimaryNavigationItem,
+  canShowSecondaryNavigationItem,
+  primaryNavigation,
+} from "@/src/features/navigation/primaryNavigation";
 import { resolveRouteMatch } from "@/src/features/navigation/routeMatching";
 
 type BackOfficeShellProps = {
@@ -138,11 +142,14 @@ export function BackOfficeShell({
     canShowPrimaryNavigationItem(account, item, capabilities),
   );
   const activePrimaryItem = resolveRouteMatch(pathname, visiblePrimaryItems);
+  const visibleSecondaryItems = activePrimaryItem?.secondaryNavigation?.filter((item) =>
+    canShowSecondaryNavigationItem(account, item),
+  );
   const automaticSectionSidebar =
-    layoutMode === "workspace" ? null : activePrimaryItem?.secondaryNavigation?.length && activePrimaryItem.secondaryLabel ? (
+    layoutMode === "workspace" ? null : visibleSecondaryItems?.length && activePrimaryItem?.secondaryLabel ? (
       <ContextualSidebar
         label={activePrimaryItem.secondaryLabel}
-        items={activePrimaryItem.secondaryNavigation}
+        items={visibleSecondaryItems}
         theme={theme}
       />
     ) : null;

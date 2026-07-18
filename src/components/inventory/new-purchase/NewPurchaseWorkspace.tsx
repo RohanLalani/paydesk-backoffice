@@ -59,11 +59,11 @@ const tabs: Array<{ id: PurchaseTabId; label: string }> = [
   { id: "summary", label: "Purchase Summary" },
 ];
 
-const purchaseTypes: Array<[PurchaseType, string]> = [
-  ["CASH_DAILY", "Cash - Daily"],
-  ["CHECK", "Check"],
-  ["CREDIT", "Credit"],
-];
+const purchaseTypes = [
+  { label: "Cash - Daily", value: "CASH_DAILY" },
+  { label: "Check", value: "CHECK" },
+  { label: "Credit", value: "CREDIT" },
+] satisfies Array<{ label: string; value: PurchaseType }>;
 
 type BulkField = "quantity" | "unitsPerCase" | "caseCost" | "caseDiscount" | "unitCost" | "newRetail" | "departmentId" | "priceGroupId" | "categoryId" | "rebate";
 type ScannerEntryType = "purchase" | "return";
@@ -405,7 +405,8 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
     if (!canSubmit || !validateForm()) return;
     setSaving(status);
     try {
-      await createStorePurchase(context.selectedStore.id, buildPayload(status, header, manual, lines, expenses));
+      const payload = buildPayload(status, header, manual, lines, expenses);
+      await createStorePurchase(context.selectedStore.id, payload);
       router.refresh();
       if (options.stayOnPage) {
         setDetailMessage("Purchase draft saved.");
@@ -535,7 +536,7 @@ function PurchaseHeaderForm({ header, payees, filteredPayees, selectedPayee, pay
         </Field>
         <Field label="Purchase Type" styles={styles}>
           <FormSelect value={header.purchaseType} onChange={(event) => onUpdate("purchaseType", event.target.value as PurchaseType)} selectClassName={styles.input}>
-            {purchaseTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {purchaseTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </FormSelect>
         </Field>
       </div>
@@ -1318,7 +1319,7 @@ function PurchaseSummary({ header, selectedPayee, manual, summaryTable, warnings
   warnings: string[];
   styles: ThemeClasses;
 }) {
-  const typeLabel = purchaseTypes.find(([value]) => value === header.purchaseType)?.[1] ?? header.purchaseType;
+  const typeLabel = purchaseTypes.find((option) => option.value === header.purchaseType)?.label ?? header.purchaseType;
   return (
     <div className="space-y-4" role="tabpanel" id="panel-summary" aria-labelledby="tab-summary">
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -1484,7 +1485,7 @@ function buildPayload(status: PurchaseStatus, header: PurchaseHeaderState, manua
     purchaseDate: header.purchaseDate,
     payeeId: header.payeeId,
     invoiceNumber: header.invoiceNumber.trim(),
-    purchaseType: header.purchaseType,
+    type: header.purchaseType,
     status,
     manualEntry: {
       defaultMargin: manual.defaultMargin.trim() || null,
