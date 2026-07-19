@@ -1,5 +1,5 @@
-import { LogsSectionPage } from "@/src/components/logs/LogsSectionPage";
+import { ProductLogsPage } from "@/src/components/logs/ProductLogsWorkspace";
 
 export default function LogsItemLogsPage() {
-  return <LogsSectionPage itemId="item-logs" />;
+  return <ProductLogsPage activeItem="logs" />;
 }

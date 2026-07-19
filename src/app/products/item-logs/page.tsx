@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { ProductLogsPage } from "@/src/components/logs/ProductLogsWorkspace";
 
 export default function ProductItemLogsPage() {
-  return <ProductSectionPage href="/products/item-logs" />;
+  return <ProductLogsPage activeItem="products" />;
 }
