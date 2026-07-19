@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, FilePlus2, RefreshCcw, RotateCcw, Search } from "lucide-react";
 import { BackOfficeShell, type BackOfficeShellContext } from "@/src/components/layout/BackOfficeShell";
@@ -154,6 +155,7 @@ export function PurchasesWorkspace() {
 }
 
 function PurchasesWorkspaceContent({ theme, selectedStore, account }: BackOfficeShellContext) {
+  const router = useRouter();
   const styles = classesFor(theme);
   const canCreate = account?.role === "owner" || account?.role === "partner" || account?.permissions?.includes("manage_purchases") === true;
   const [filters, setFilters] = useState<FilterState>(initialFilters);
@@ -269,10 +271,8 @@ function PurchasesWorkspaceContent({ theme, selectedStore, account }: BackOffice
 
   const detailLoading = Boolean(selectedPurchaseId) && !selectedPurchase && !detailError;
 
-  function selectPurchase(purchaseId: string) {
-    setSelectedPurchaseId(purchaseId);
-    setSelectedPurchase(null);
-    setDetailError(false);
+  function openPurchase(purchaseId: string) {
+    router.push(`/inventory/purchases/detail?purchaseId=${encodeURIComponent(purchaseId)}`);
   }
 
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]) {
@@ -481,11 +481,11 @@ function PurchasesWorkspaceContent({ theme, selectedStore, account }: BackOffice
                       key={purchase.id}
                       tabIndex={0}
                       aria-selected={selected}
-                      onClick={() => selectPurchase(purchase.id)}
+                      onClick={() => openPurchase(purchase.id)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          selectPurchase(purchase.id);
+                          openPurchase(purchase.id);
                         }
                       }}
                       className={`cursor-pointer border-b outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7c5cff] ${styles.border} ${styles.hover} ${selected ? styles.selected : ""}`}

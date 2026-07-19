@@ -20,9 +20,12 @@ import {
 } from "@/src/features/products/api";
 import {
   createStorePurchase,
+  getStorePurchase,
   listStorePayees,
+  updateStorePurchase,
   type CreatePurchaseInput,
   type Payee,
+  type PurchaseDetail,
   type PurchaseStatus,
   type PurchaseType,
 } from "@/src/features/purchases/api";
@@ -228,6 +231,34 @@ function newExpense(id = createClientId("expense")): PurchaseExpense {
   return { id, description: "", amount: "" };
 }
 
+function lineFromPurchaseItem(item: PurchaseDetail["items"][number]): DetailedPurchaseLine {
+  return {
+    id: item.id,
+    productId: item.productId,
+    productNumber: item.product.productNumber ?? item.productNumberSnapshot,
+    barcode: item.product.barcode ?? item.barcodeSnapshot ?? "",
+    description: item.product.name ?? item.productNameSnapshot ?? "",
+    priceGroupId: item.priceGroupId ?? "",
+    priceGroupName: "",
+    categoryId: item.categoryId ?? "",
+    categoryName: "",
+    quantity: String(item.quantity),
+    unitsPerCase: String(item.unitsPerCase),
+    caseCost: item.caseCost,
+    caseDiscount: item.caseDiscount,
+    unitCost: item.unitCost,
+    currentRetail: item.unitRetailSnapshot,
+    newRetail: item.unitRetailSnapshot,
+    rebate: item.rebate,
+    departmentId: item.departmentId ?? "",
+    departmentName: "",
+    taxName: "",
+    vendorItemNumber: "",
+    existingInventoryQuantity: null,
+    scannerEntryType: item.entryType,
+  };
+}
+
 function classesFor(theme: "light" | "dark"): ThemeClasses {
   const isDark = theme === "dark";
   return {
@@ -247,15 +278,15 @@ function canManagePurchases(context: BackOfficeShellContext) {
   return context.account?.role === "owner" || context.account?.role === "partner" || context.account?.permissions?.includes("manage_purchases") === true;
 }
 
-export function NewPurchaseWorkspace() {
+export function NewPurchaseWorkspace({ purchaseId }: { purchaseId?: string }) {
   return (
     <BackOfficeShell activeItem="inventory" requiredPermission="manage_purchases" layoutMode="workspace">
-      {(context) => <NewPurchaseContent {...context} />}
+      {(context) => <NewPurchaseContent {...context} purchaseId={purchaseId} />}
     </BackOfficeShell>
   );
 }
 
-function NewPurchaseContent(context: BackOfficeShellContext) {
+function NewPurchaseContent(context: BackOfficeShellContext & { purchaseId?: string }) {
   const router = useRouter();
   const styles = classesFor(context.theme);
   const [header, setHeader] = useState<PurchaseHeaderState>({
@@ -279,6 +310,8 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
   const [payeeState, setPayeeState] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [departmentError, setDepartmentError] = useState(false);
   const [saving, setSaving] = useState<PurchaseStatus | null>(null);
+  const [loadedPurchase, setLoadedPurchase] = useState<PurchaseDetail | null>(null);
+  const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
   const [pendingScannerLines, setPendingScannerLines] = useState<DetailedPurchaseLine[]>([]);
   const scannerInputRef = useRef<HTMLTextAreaElement>(null);
@@ -316,6 +349,65 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
   }, [context.selectedStore.id]);
 
   useEffect(() => {
+    if (!context.purchaseId) {
+      return;
+    }
+
+    let mounted = true;
+    queueMicrotask(() => {
+      if (!mounted) return;
+      setIsLoadingPurchase(true);
+      setFieldErrors({});
+    });
+
+    getStorePurchase(context.selectedStore.id, context.purchaseId)
+      .then((purchase) => {
+        if (!mounted) return;
+        setLoadedPurchase(purchase);
+        setHeader({
+          purchaseDate: purchase.purchaseDate.slice(0, 10),
+          payeeId: purchase.payee.id,
+          payeeSearch: purchase.payee.name,
+          invoiceNumber: purchase.invoiceNumber,
+          purchaseType: purchase.type,
+          autoAddCaseDiscounts: false,
+          doNotAddLinkedItemCostRetail: false,
+        });
+        setManual({
+          defaultMargin: purchase.manualEntry.margin ?? "",
+          cost: purchase.manualEntry.cost === "0.00" ? "" : purchase.manualEntry.cost,
+          retail: purchase.manualEntry.retail === "0.00" ? "" : purchase.manualEntry.retail,
+          departmentId: "",
+          retailTouched: true,
+        });
+        setLines(purchase.items.map(lineFromPurchaseItem));
+        setExpenses(
+          purchase.expenses.length
+            ? purchase.expenses.map((expense) => ({
+                id: expense.id,
+                description: expense.description,
+                amount: expense.amount,
+              }))
+            : [newExpense("expense-initial")],
+        );
+        setActiveTab("detailed");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setFieldErrors({
+          form: error instanceof Error ? error.message : "Purchase could not be loaded.",
+        });
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingPurchase(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [context.purchaseId, context.selectedStore.id]);
+
+  useEffect(() => {
     if (activeTab === "scanner") {
       scannerInputRef.current?.focus();
     }
@@ -341,7 +433,8 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
   const summaryTable = useMemo(() => calculatePurchaseSummaryTable(manual, [...lines, ...pendingScannerLines], expenses, departments), [departments, expenses, lines, manual, pendingScannerLines]);
   const totals = useMemo(() => calculatePurchaseTotals(manual, [...lines, ...pendingScannerLines], expenses), [expenses, lines, manual, pendingScannerLines]);
   const manualMargin = calculateMargin(parseAmount(manual.cost), parseAmount(manual.retail));
-  const canSubmit = canManagePurchases(context) && !saving;
+  const isLockedPurchase = loadedPurchase?.status === "VERIFIED" || loadedPurchase?.status === "VOIDED";
+  const canSubmit = canManagePurchases(context) && !saving && !isLoadingPurchase && !isLockedPurchase;
 
   function updateHeader<K extends keyof PurchaseHeaderState>(key: K, value: PurchaseHeaderState[K]) {
     setHeader((current) => ({ ...current, [key]: value }));
@@ -405,11 +498,16 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
     if (!canSubmit || !validateForm()) return;
     setSaving(status);
     try {
-      const payload = buildPayload(status, header, manual, lines, expenses);
-      await createStorePurchase(context.selectedStore.id, payload);
+      const payload = buildPayload(status, header, manual, lines, expenses, loadedPurchase?.updatedAt);
+      if (loadedPurchase) {
+        const updated = await updateStorePurchase(context.selectedStore.id, loadedPurchase.id, payload);
+        setLoadedPurchase(updated);
+      } else {
+        await createStorePurchase(context.selectedStore.id, payload);
+      }
       router.refresh();
       if (options.stayOnPage) {
-        setDetailMessage("Purchase draft saved.");
+        setDetailMessage(loadedPurchase ? "Purchase changes saved." : "Purchase draft saved.");
         setSaving(null);
         return;
       }
@@ -429,8 +527,19 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to Purchases
         </Link>
-        <ActionBar saving={saving} canSubmit={canSubmit} onCancel={() => router.push("/inventory/purchases")} onSaveDraft={() => void submit("DRAFT")} onCreate={() => void submit("OPEN")} />
+        <ActionBar saving={saving} canSubmit={canSubmit} isEditing={Boolean(loadedPurchase)} onCancel={() => router.push("/inventory/purchases")} onSaveDraft={() => void submit("DRAFT", { stayOnPage: Boolean(loadedPurchase) })} onCreate={() => void submit("OPEN", { stayOnPage: Boolean(loadedPurchase) })} />
       </div>
+
+      {isLoadingPurchase ? (
+        <div className={`rounded-[8px] border p-4 text-sm font-bold ${styles.panel}`}>
+          Loading purchase...
+        </div>
+      ) : null}
+      {isLockedPurchase ? (
+        <div className={`rounded-[8px] border border-amber-500/20 bg-amber-500/10 p-4 text-sm font-bold text-amber-600`}>
+          This {loadedPurchase.status.toLowerCase()} purchase is read-only.
+        </div>
+      ) : null}
 
       <PurchaseHeaderForm
         header={header}
@@ -500,7 +609,7 @@ function NewPurchaseContent(context: BackOfficeShellContext) {
 
       {activeTab !== "summary" ? <CompactPurchaseTotalsTable totals={totals} styles={styles} /> : null}
       <div className="flex justify-end">
-        <ActionBar saving={saving} canSubmit={canSubmit} onCancel={() => router.push("/inventory/purchases")} onSaveDraft={() => void submit("DRAFT")} onCreate={() => void submit("OPEN")} />
+        <ActionBar saving={saving} canSubmit={canSubmit} isEditing={Boolean(loadedPurchase)} onCancel={() => router.push("/inventory/purchases")} onSaveDraft={() => void submit("DRAFT", { stayOnPage: Boolean(loadedPurchase) })} onCreate={() => void submit("OPEN", { stayOnPage: Boolean(loadedPurchase) })} />
       </div>
     </section>
   );
@@ -1434,11 +1543,11 @@ function TabList({ activeTab, styles, onChange }: { activeTab: PurchaseTabId; st
   );
 }
 
-function ActionBar({ saving, canSubmit, onCancel, onSaveDraft, onCreate }: { saving: PurchaseStatus | null; canSubmit: boolean; onCancel: () => void; onSaveDraft: () => void; onCreate: () => void }) {
+function ActionBar({ saving, canSubmit, isEditing, onCancel, onSaveDraft, onCreate }: { saving: PurchaseStatus | null; canSubmit: boolean; isEditing: boolean; onCancel: () => void; onSaveDraft: () => void; onCreate: () => void }) {
   return (
     <div className="flex flex-wrap gap-2">
       <button type="button" onClick={onSaveDraft} disabled={!canSubmit} className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-[#7c5cff]/35 px-3 text-sm font-extrabold text-[#7c5cff] disabled:cursor-not-allowed disabled:opacity-60">{saving === "DRAFT" ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}Save Draft</button>
-      <button type="button" onClick={onCreate} disabled={!canSubmit} className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-[#4f2df2] px-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{saving === "OPEN" ? <LoaderCircle className="size-4 animate-spin" /> : <FilePlus2 className="size-4" />}Save / Create Purchase</button>
+      <button type="button" onClick={onCreate} disabled={!canSubmit} className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-[#4f2df2] px-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{saving === "OPEN" ? <LoaderCircle className="size-4 animate-spin" /> : <FilePlus2 className="size-4" />}{isEditing ? "Save Changes" : "Save / Create Purchase"}</button>
       <button type="button" onClick={onCancel} disabled={Boolean(saving)} className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-slate-400/30 px-3 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-60"><X className="size-4" />Cancel</button>
     </div>
   );
@@ -1480,13 +1589,14 @@ function payeeHelper(state: "loading" | "ready" | "empty" | "error", count: numb
   return selectedPayee ? `Selected: ${selectedPayee.name}` : `${count} active payees available.`;
 }
 
-function buildPayload(status: PurchaseStatus, header: PurchaseHeaderState, manual: ManualPurchaseEntryState, lines: DetailedPurchaseLine[], expenses: PurchaseExpense[]): CreatePurchaseInput {
+function buildPayload(status: PurchaseStatus, header: PurchaseHeaderState, manual: ManualPurchaseEntryState, lines: DetailedPurchaseLine[], expenses: PurchaseExpense[], updatedAt?: string): CreatePurchaseInput {
   return {
     purchaseDate: header.purchaseDate,
     payeeId: header.payeeId,
     invoiceNumber: header.invoiceNumber.trim(),
     type: header.purchaseType,
     status,
+    updatedAt,
     manualEntry: {
       defaultMargin: manual.defaultMargin.trim() || null,
       cost: manual.cost.trim() || null,
@@ -1494,7 +1604,7 @@ function buildPayload(status: PurchaseStatus, header: PurchaseHeaderState, manua
       margin: calculateMargin(parseAmount(manual.cost), parseAmount(manual.retail))?.toFixed(2) ?? null,
       departmentId: manual.departmentId || null,
     },
-    lineItems: lines.filter((line) => line.productId || line.barcode || line.description).map((line) => ({
+    items: lines.filter((line) => line.productId || line.barcode || line.description).map((line) => ({
       productId: line.productId || undefined,
       barcode: line.barcode.trim() || undefined,
       description: line.description.trim() || undefined,
@@ -1510,6 +1620,7 @@ function buildPayload(status: PurchaseStatus, header: PurchaseHeaderState, manua
       priceGroupId: line.priceGroupId || null,
       categoryId: line.categoryId || null,
       entryType: line.scannerEntryType,
+      source: line.id.startsWith("scanner") ? "scanner" : "detailed",
     })),
     expenses: expenses.filter((expense) => expense.description.trim() || parseAmount(expense.amount) > 0).map((expense) => ({
       description: expense.description.trim(),

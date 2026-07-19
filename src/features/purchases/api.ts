@@ -106,12 +106,27 @@ export type PurchaseDetail = {
   rebateAmount: string;
   totalCost: string;
   marginPercent: string | null;
+  manualEntry: {
+    cost: string;
+    retail: string;
+    margin: string | null;
+  };
+  inventoryPostedAt: string | null;
   lineCount: number;
   totalUnits: number;
   items: Array<{
     id: string;
     productId: string;
+    departmentId: string | null;
+    priceGroupId: string | null;
+    categoryId: string | null;
     quantity: number;
+    unitsPerCase: number;
+    caseCost: string;
+    caseDiscount: string;
+    rebate: string;
+    entryType: "purchase" | "return";
+    source: string | null;
     unitCost: string;
     extendedCost: string;
     unitRetailSnapshot: string;
@@ -125,6 +140,12 @@ export type PurchaseDetail = {
       barcode: string;
       name: string;
     };
+  }>;
+  expenses: Array<{
+    id: string;
+    description: string;
+    amount: string;
+    departmentId: string | null;
   }>;
   createdBy: { id: string; name: string | null; email: string; role: string } | null;
   updatedBy: { id: string; name: string | null; email: string; role: string } | null;
@@ -161,6 +182,7 @@ export type CreatePurchaseLineItemInput = {
   priceGroupId?: string | null;
   categoryId?: string | null;
   entryType?: "purchase" | "return";
+  source?: string | null;
 };
 
 export type CreatePurchaseExpenseInput = {
@@ -182,8 +204,9 @@ export type CreatePurchaseInput = {
     margin?: string | null;
     departmentId?: string | null;
   };
-  lineItems?: CreatePurchaseLineItemInput[];
+  items?: CreatePurchaseLineItemInput[];
   expenses?: CreatePurchaseExpenseInput[];
+  updatedAt?: string;
 };
 
 export function listStorePayees(
@@ -240,6 +263,13 @@ export function getStorePurchase(storeId: string, purchaseId: string) {
 export function createStorePurchase(storeId: string, payload: CreatePurchaseInput) {
   return apiClient<PurchaseDetail>(`/stores/${storeId}/purchases`, {
     method: "POST",
+    body: payload,
+  });
+}
+
+export function updateStorePurchase(storeId: string, purchaseId: string, payload: CreatePurchaseInput) {
+  return apiClient<PurchaseDetail>(`/stores/${storeId}/purchases/${purchaseId}`, {
+    method: "PATCH",
     body: payload,
   });
 }
