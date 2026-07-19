@@ -81,8 +81,10 @@ export type ProductLogChangeType =
   | "Deactivated"
   | "Price Change"
   | "Cost Change"
+  | "Price and Cost Change"
   | "Classification Change"
   | "Multipack Change"
+  | "Multiple Changes"
   | "Other";
 
 export type ProductLogSource =
@@ -99,7 +101,6 @@ export type ProductLogSortField =
   | "productNumber"
   | "productDescription"
   | "changeType"
-  | "fieldChanged"
   | "changedBy";
 
 export type ProductLogTimeRange = "today" | "yesterday" | "7d" | "30d" | "custom" | "all";
@@ -117,10 +118,13 @@ export type ProductLogRow = {
   categoryId: string | null;
   priceGroupId: string | null;
   changeType: ProductLogChangeType | string;
-  fieldChanged: string;
-  fieldKey: string;
-  previousValue: unknown;
-  newValue: unknown;
+  changesSummary: string;
+  changedFields: Array<{
+    field: string;
+    fieldLabel: string;
+    previousValue: unknown;
+    newValue: unknown;
+  }>;
   changedBy: {
     id: string;
     name: string | null;
@@ -231,8 +235,10 @@ export const productLogChangeTypes: ProductLogChangeType[] = [
   "Deactivated",
   "Price Change",
   "Cost Change",
+  "Price and Cost Change",
   "Classification Change",
   "Multipack Change",
+  "Multiple Changes",
   "Other",
 ];
 
