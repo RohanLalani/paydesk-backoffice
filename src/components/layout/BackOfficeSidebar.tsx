@@ -133,7 +133,7 @@ export function BackOfficeSidebar({
 
   return (
     <>
-      <aside className={`hidden min-h-dvh w-[232px] shrink-0 border-r px-5 py-5 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overscroll-contain ${panelClass}`}>
+      <aside className={`hidden min-h-dvh w-[232px] shrink-0 border-r px-5 py-5 md:flex md:h-dvh md:min-h-0 md:flex-col md:overflow-y-auto md:overscroll-contain ${panelClass}`}>
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-[8px] bg-[#4f2df2] text-white">
             <SlidersHorizontal className="size-5" aria-hidden="true" />
@@ -192,7 +192,7 @@ export function BackOfficeSidebar({
         </nav>
       </aside>
 
-      <nav className={`fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-1 border-t px-2 py-2 lg:hidden ${isDark ? "border-slate-400/15 bg-[#0b1224]/95" : "border-[#ded8f3] bg-white/95"}`} aria-label="Back office mobile">
+      <nav className={`fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-1 border-t px-2 py-2 md:hidden ${isDark ? "border-slate-400/15 bg-[#0b1224]/95" : "border-[#ded8f3] bg-white/95"}`} aria-label="Back office mobile">
         {mobileItems.map((item) => renderNavItem(item, true))}
       </nav>
     </>
