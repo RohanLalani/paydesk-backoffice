@@ -12,7 +12,7 @@ export function FeatureGatePage({
   unavailable,
 }: {
   activeItem: BackOfficeNavKey;
-  capability: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty">;
+  capability: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty" | "orders">;
   title: string;
   description: string;
   unavailable: string;

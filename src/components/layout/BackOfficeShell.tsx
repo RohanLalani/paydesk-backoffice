@@ -39,6 +39,8 @@ export type BackOfficeShellContext = {
   account: AuthAccount | null;
   selectedStore: Store;
   capabilities: StoreCapabilities;
+  capabilitiesLoading: boolean;
+  capabilitiesError: string;
 };
 
 function formatStatus(store: Store) {
@@ -69,6 +71,7 @@ type MobileNavigationDrawerProps = {
   open: boolean;
   onClose: () => void;
   account: AuthAccount | null;
+  capabilities: StoreCapabilities;
   theme: PayDeskTheme;
   pathname: string;
   items: PrimaryNavigationItem[];
@@ -79,6 +82,7 @@ function MobileNavigationDrawer({
   open,
   onClose,
   account,
+  capabilities,
   theme,
   pathname,
   items,
@@ -161,7 +165,7 @@ function MobileNavigationDrawer({
     const Icon = item.icon;
     const isActive = activePrimaryItem?.key === item.key;
     const secondaryItems = item.secondaryNavigation?.filter((secondary) =>
-      canShowSecondaryNavigationItem(account, secondary),
+      canShowSecondaryNavigationItem(account, secondary, capabilities),
     );
     const hasChildren = Boolean(secondaryItems?.length);
     const isExpanded = expandedPrimaryKey === item.key;
@@ -260,8 +264,6 @@ function MobileNavigationDrawer({
             const isExpanded = expandedCategory === category.key;
             const hasActiveItem = activePrimaryItem?.category === category.key;
 
-            if (!categoryItems.length) return null;
-
             return (
               <section key={category.key}>
                 <button
@@ -277,7 +279,13 @@ function MobileNavigationDrawer({
                 </button>
                 {isExpanded ? (
                   <div className="mt-2 space-y-1">
-                    {categoryItems.map((item) => renderPrimaryLink(item))}
+                    {categoryItems.length ? (
+                      categoryItems.map((item) => renderPrimaryLink(item))
+                    ) : (
+                      <p className={`rounded-[8px] px-3 py-3 text-xs font-semibold leading-5 ${isDark ? "bg-white/[0.04] text-slate-400" : "bg-[#fbfaff] text-slate-500"}`}>
+                        {category.empty}
+                      </p>
+                    )}
                   </div>
                 ) : null}
               </section>
@@ -304,7 +312,11 @@ export function BackOfficeShell({
   const [isReady, setIsReady] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const { capabilities } = useStoreCapabilities(selectedStore);
+  const {
+    capabilities,
+    isLoading: capabilitiesLoading,
+    error: capabilitiesError,
+  } = useStoreCapabilities(selectedStore);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -379,7 +391,7 @@ export function BackOfficeShell({
   );
   const activePrimaryItem = resolveRouteMatch(pathname, visiblePrimaryItems);
   const visibleSecondaryItems = activePrimaryItem?.secondaryNavigation?.filter((item) =>
-    canShowSecondaryNavigationItem(account, item),
+    canShowSecondaryNavigationItem(account, item, capabilities),
   );
   const automaticSectionSidebar =
     layoutMode === "workspace" ? null : visibleSecondaryItems?.length && activePrimaryItem?.secondaryLabel ? (
@@ -389,7 +401,15 @@ export function BackOfficeShell({
         theme={theme}
       />
     ) : null;
-  const renderedSectionSidebar = sectionSidebar?.({ theme, account, selectedStore, capabilities }) ?? automaticSectionSidebar;
+  const shellContext = {
+    theme,
+    account,
+    selectedStore,
+    capabilities,
+    capabilitiesLoading,
+    capabilitiesError,
+  };
+  const renderedSectionSidebar = sectionSidebar?.(shellContext) ?? automaticSectionSidebar;
 
   if (requiredPermission && !hasPermission(account, requiredPermission)) {
     return (
@@ -407,6 +427,7 @@ export function BackOfficeShell({
         open={isMobileNavOpen}
         onClose={closeMobileNavigation}
         account={account}
+        capabilities={capabilities}
         theme={theme}
         pathname={pathname}
         items={visiblePrimaryItems}
@@ -494,7 +515,7 @@ export function BackOfficeShell({
               role="main"
               tabIndex={-1}
             >
-              {children({ theme, account, selectedStore, capabilities })}
+              {children(shellContext)}
             </div>
           </div>
 

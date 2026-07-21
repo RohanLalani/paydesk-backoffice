@@ -46,6 +46,7 @@ export type StoreCapabilities = {
   lottery: StoreCapabilityStatus;
   recipeSuite: StoreCapabilityStatus;
   loyalty: StoreCapabilityStatus;
+  orders: StoreCapabilityStatus;
 };
 
 export type Store = {
@@ -54,6 +55,9 @@ export type Store = {
   address?: string;
   isActive?: boolean;
   status?: string;
+  basePlan?: string | null;
+  subscriptionPlan?: string | null;
+  subscriptionStatus?: string | null;
   type?: string;
   businessType: StoreBusinessType;
   createdAt?: string;

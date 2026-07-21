@@ -6,8 +6,9 @@ import {
   ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
+import type { SecondaryNavigationItem } from "@/src/features/navigation/primaryNavigation";
 
-export type InventoryNavigationItem = {
+export type InventoryNavigationItem = SecondaryNavigationItem & {
   id: string;
   label: string;
   href: string;
@@ -50,5 +51,6 @@ export const inventoryNavigation: InventoryNavigationItem[] = [
     href: "/products/orders",
     icon: ListOrdered,
     description: "Coordinate product orders and fulfillment preparation.",
+    requires: "orders",
   },
 ];

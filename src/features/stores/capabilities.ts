@@ -11,6 +11,12 @@ export const emptyStoreCapabilities: StoreCapabilities = {
     source: "subscription",
     billingStatus: "not_added",
   },
+  orders: {
+    enabled: false,
+    available: false,
+    source: "subscription",
+    billingStatus: "not_added",
+  },
 };
 
 export const STORE_CAPABILITIES_UPDATED_EVENT = "paydesk-store-capabilities-updated";
@@ -20,6 +26,7 @@ export function normalizeCapabilities(store?: Store | null): StoreCapabilities {
     lottery: store?.capabilities?.lottery ?? emptyStoreCapabilities.lottery,
     recipeSuite: store?.capabilities?.recipeSuite ?? emptyStoreCapabilities.recipeSuite,
     loyalty: store?.capabilities?.loyalty ?? emptyStoreCapabilities.loyalty,
+    orders: store?.capabilities?.orders ?? emptyStoreCapabilities.orders,
   };
 }
 
@@ -49,7 +56,10 @@ export function useStoreCapabilities(store?: Store | null) {
       getStoreFeatures(store.id)
       .then((response) => {
         if (isMounted) {
-          setCapabilities(response.features);
+          setCapabilities({
+            ...emptyStoreCapabilities,
+            ...response.features,
+          });
         }
       })
       .catch((fetchError) => {
@@ -81,6 +91,7 @@ export function useStoreCapabilities(store?: Store | null) {
       lotteryEnabled: capabilities.lottery.available,
       recipeSuiteEnabled: capabilities.recipeSuite.available,
       loyaltyEnabled: capabilities.loyalty.available,
+      ordersEnabled: capabilities.orders.available,
     }),
     [capabilities, error, isLoading],
   );

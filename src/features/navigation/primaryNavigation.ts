@@ -2,6 +2,7 @@ import {
   Blocks,
   Boxes,
   Building2,
+  ChartColumn,
   ClipboardList,
   CreditCard,
   Gauge,
@@ -15,6 +16,8 @@ import {
   ShieldCheck,
   Store,
   Ticket,
+  UserCog,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { inventoryNavigation } from "@/src/features/inventory/navigation";
@@ -57,6 +60,7 @@ export type SecondaryNavigationItem = {
   exact?: boolean;
   match?: string[];
   permission?: string;
+  requires?: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty" | "orders">;
 };
 
 export type PrimaryNavigationItem = {
@@ -68,7 +72,7 @@ export type PrimaryNavigationItem = {
   match?: string[];
   exact?: boolean;
   permission?: string;
-  requires?: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty">;
+  requires?: keyof Pick<StoreCapabilities, "lottery" | "recipeSuite" | "loyalty" | "orders">;
   secondaryLabel?: string;
   secondaryNavigation?: SecondaryNavigationItem[];
 };
@@ -240,6 +244,32 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     category: "setup",
     match: ["/settings/receipt"],
   },
+  {
+    key: "analytics",
+    label: "Analytics",
+    href: "/analytics",
+    icon: ChartColumn,
+    category: "analytics",
+    match: ["/analytics"],
+  },
+  {
+    key: "customers",
+    label: "Customers",
+    href: "/customers",
+    icon: Users,
+    category: "personnel",
+    match: ["/customers"],
+    permission: "manage_customers",
+  },
+  {
+    key: "employees",
+    label: "Employees",
+    href: "/employees",
+    icon: UserCog,
+    category: "personnel",
+    match: ["/employees", "/staff"],
+    permission: "manage_employees",
+  },
 ];
 
 export function canShowPrimaryNavigationItem(
@@ -258,7 +288,15 @@ export function canShowPrimaryNavigationItem(
   return account.permissions?.includes(item.permission) === true;
 }
 
-export function canShowSecondaryNavigationItem(account: AuthAccount | null, item: SecondaryNavigationItem) {
+export function canShowSecondaryNavigationItem(
+  account: AuthAccount | null,
+  item: SecondaryNavigationItem,
+  capabilities?: StoreCapabilities,
+) {
+  if (item.requires && !capabilities?.[item.requires]?.available) {
+    return false;
+  }
+
   if (!item.permission || !account || account.role === "owner" || account.role === "partner") {
     return true;
   }
