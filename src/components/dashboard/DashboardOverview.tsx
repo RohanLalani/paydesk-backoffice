@@ -88,7 +88,7 @@ export function DashboardOverview({ account, storeId, theme }: DashboardOverview
       ) : null}
 
       {loadState === "ready" && summary ? (
-        <section className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="mt-7 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <SalesTrendCard
             data={summary.salesTrend}
             theme={theme}

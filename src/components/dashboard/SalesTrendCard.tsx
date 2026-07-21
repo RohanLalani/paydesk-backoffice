@@ -45,38 +45,42 @@ export function SalesTrendCard({ data, theme, rangeLabel, onRangeChange }: Sales
 
   return (
     <motion.section
-      className={`rounded-[8px] border p-4 sm:p-5 ${
+      className={`min-w-0 rounded-[8px] border p-4 sm:p-5 ${
         isDark ? "border-slate-400/15 bg-[#0f172a]" : "border-[#ded8f3] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.05)]"
       }`}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.42, delay: 0.12, ease: "easeOut" }}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7rem)_minmax(0,1fr)]">
+        <div className="min-w-0">
           <h2 className={`text-sm font-bold ${isDark ? "text-[#f4f1ff]" : "text-slate-950"}`}>Sales Trend</h2>
           <p className={`mt-1 text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             Revenue performance over the last 24 hours
           </p>
         </div>
-        <FormSelect
-          value={rangeLabel.toLowerCase()}
-          onChange={(event) => onRangeChange(event.target.value as "today" | "week" | "month")}
-          selectClassName={`inline-flex h-8 w-auto shrink-0 items-center gap-2 rounded-[6px] px-3 text-xs font-bold ${
-            isDark
-              ? "border-slate-400/15 bg-white/[0.03] text-slate-300 hover:border-[#7c5cff]/60"
-              : "border-[#ded8f3] bg-white text-slate-600 hover:border-[#7c5cff]/60"
-          }`}
-        >
-          <option value="today">Today</option>
-          <option value="week">Week</option>
-          <option value="month">Month</option>
-        </FormSelect>
-        <ChevronDown className="-ml-8 mt-2 size-3.5 pointer-events-none" aria-hidden="true" />
-      </div>
+        <div className="min-w-0">
+          <div className="flex w-full min-w-0 justify-end">
+            <div className="relative w-full min-w-0 max-w-40">
+              <FormSelect
+                value={rangeLabel.toLowerCase()}
+                onChange={(event) => onRangeChange(event.target.value as "today" | "week" | "month")}
+                selectClassName={`h-8 w-full max-w-full appearance-none rounded-[6px] px-3 pr-8 text-xs font-bold ${
+                  isDark
+                    ? "border-slate-400/15 bg-white/[0.03] text-slate-300 hover:border-[#7c5cff]/60"
+                    : "border-[#ded8f3] bg-white text-slate-600 hover:border-[#7c5cff]/60"
+                }`}
+              >
+                <option value="today">Today</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+              </FormSelect>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2" aria-hidden="true" />
+            </div>
+          </div>
 
-      <div className="mt-5">
-        <svg viewBox="0 0 640 240" className="h-[230px] w-full overflow-visible" role="img" aria-label="Sales trend area chart">
+          <div className="mt-5 min-w-0">
+            <svg viewBox="0 0 640 240" className="h-[230px] w-full overflow-visible" role="img" aria-label="Sales trend area chart">
           <defs>
             <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="#a99dff" stopOpacity={isDark ? "0.42" : "0.28"} />
@@ -108,7 +112,9 @@ export function SalesTrendCard({ data, theme, rangeLabel, onRangeChange }: Sales
               {point.label}
             </text>
           ))}
-        </svg>
+            </svg>
+          </div>
+        </div>
       </div>
     </motion.section>
   );

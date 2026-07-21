@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { PromotionsWorkspace } from '@/src/components/promotions/PromotionsWorkspace';
 
 export default function ProductPromotionsPage() {
-  return <ProductSectionPage href="/products/promotions" />;
+  return <PromotionsWorkspace />;
 }
