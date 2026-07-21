@@ -148,7 +148,11 @@ function ProductLogsWorkspace({ theme, selectedStore }: BackOfficeShellContext) 
   }, [categoryId, changeType, changedBy, departmentId, field, fromDate, fromTime, limit, order, page, priceGroupId, search, selectedRow, selectedStore.id, sort, source, timeRange, toDate, toTime]);
 
   useEffect(() => {
-    void loadRows();
+    const timeoutId = window.setTimeout(() => {
+      void loadRows();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [loadRows]);
 
   useEffect(() => {
