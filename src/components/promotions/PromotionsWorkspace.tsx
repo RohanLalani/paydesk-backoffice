@@ -77,7 +77,7 @@ function Content({ storeId, dark }: { storeId: string; dark: boolean }) {
         >
           <option value="">All types</option>
           {promotionTypes.map((item) => (
-            <option key={item}>{item.replaceAll("_", " ")}</option>
+            <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
           ))}
         </select>
         <select
