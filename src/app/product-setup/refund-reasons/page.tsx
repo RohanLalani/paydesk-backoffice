@@ -1,5 +1,5 @@
-import { ProductSetupSectionPage } from "@/src/components/product-setup/ProductSetupSectionPage";
+import { RefundReasonsWorkspace } from "@/src/components/product-setup/RefundReasonsWorkspace";
 
 export default function RefundReasonsPage() {
-  return <ProductSetupSectionPage href="/product-setup/refund-reasons" />;
+  return <RefundReasonsWorkspace />;
 }
