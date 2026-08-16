@@ -71,7 +71,7 @@ function InventoryAdjustmentsContent({
         getInventoryAdjustmentLogs(storeId),
       ]);
       setReasons(reasonResponse.items.filter((reason) => reason.isActive));
-      setLogs(logResponse);
+      setLogs(logResponse.items);
     } catch (error) {
       console.error("Failed to load inventory adjustment data", error);
       setLoadError("Inventory adjustment data could not be loaded. Please refresh and try again.");
@@ -186,7 +186,7 @@ function InventoryAdjustmentsContent({
       setReasonId("");
       setSuccessMessage(`Inventory adjusted. New quantity is ${updated.currentQuantity}.`);
       const refreshedLogs = await getInventoryAdjustmentLogs(storeId);
-      setLogs(refreshedLogs);
+      setLogs(refreshedLogs.items);
     } catch (error) {
       console.error("Inventory adjustment failed", error);
       setPageError(error instanceof ApiClientError ? error.message : "Inventory adjustment could not be applied.");

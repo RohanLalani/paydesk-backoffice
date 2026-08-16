@@ -1,5 +1,5 @@
-import { LogsSectionPage } from "@/src/components/logs/LogsSectionPage";
+import { InventoryLogsPage as InventoryLogsWorkspacePage } from "@/src/components/logs/InventoryLogsWorkspace";
 
 export default function InventoryLogsPage() {
-  return <LogsSectionPage itemId="inventory-logs" />;
+  return <InventoryLogsWorkspacePage />;
 }

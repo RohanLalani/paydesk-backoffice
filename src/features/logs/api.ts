@@ -170,6 +170,67 @@ export type ProductLogsQuery = {
   order?: "asc" | "desc";
 };
 
+export type InventoryActionType =
+  | "receive"
+  | "adjustment"
+  | "sale"
+  | "return"
+  | "spoilage"
+  | "waste"
+  | "transfer_in"
+  | "transfer_out"
+  | "manual_edit";
+
+export type InventoryLogRow = {
+  id: string;
+  actionType: InventoryActionType;
+  quantityBefore: number;
+  quantityChanged: number;
+  quantityAfter: number;
+  reason: string | null;
+  notes: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
+  productName: string | null;
+  productBarcode: string | null;
+  productNumber: number | null;
+  inventoryAdjustmentReasonId: string | null;
+  createdAt: string;
+  product: {
+    id: string;
+    name: string;
+    productNumber: number;
+    barcode: string;
+  } | null;
+  staff: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+  inventoryAdjustmentReason?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
+export type InventoryLogsResponse = {
+  items: InventoryLogRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type InventoryLogsQuery = {
+  page?: number;
+  limit?: 25 | 50 | 100;
+  search?: string;
+  actionType?: InventoryActionType | "";
+  from?: string;
+  to?: string;
+  productId?: string;
+};
+
 export const auditActions: AuditAction[] = [
   "create",
   "update",
@@ -252,6 +313,25 @@ export const productLogSources: ProductLogSource[] = [
   "System",
 ];
 
+export const inventoryActionTypes: InventoryActionType[] = [
+  "receive",
+  "adjustment",
+  "sale",
+  "return",
+  "spoilage",
+  "waste",
+  "transfer_in",
+  "transfer_out",
+  "manual_edit",
+];
+
+export function formatInventoryActionLabel(value: InventoryActionType | string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function listProductLogs(storeId: string, query: ProductLogsQuery = {}) {
   const params = new URLSearchParams({
     page: String(query.page ?? 1),
@@ -274,4 +354,19 @@ export function listProductLogs(storeId: string, query: ProductLogsQuery = {}) {
   if (query.priceGroupId) params.set("priceGroupId", query.priceGroupId);
 
   return apiClient<ProductLogsResponse>(`/stores/${storeId}/audit-events/product-logs?${params.toString()}`);
+}
+
+export function listInventoryLogs(storeId: string, query: InventoryLogsQuery = {}) {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 50),
+  });
+
+  if (query.search?.trim()) params.set("search", query.search.trim());
+  if (query.actionType) params.set("actionType", query.actionType);
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.productId) params.set("productId", query.productId);
+
+  return apiClient<InventoryLogsResponse>(`/product/inventory/logs/store/${storeId}?${params.toString()}`);
 }

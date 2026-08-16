@@ -429,6 +429,14 @@ export type InventoryAdjustmentLog = {
   } | null;
 };
 
+export type InventoryAdjustmentLogCollection = {
+  items: InventoryAdjustmentLog[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
 export type ProductPayload = Omit<
   ProductRecord,
   | "id"
@@ -500,7 +508,7 @@ export function applyInventoryAdjustment(payload: InventoryAdjustmentPayload) {
 export function getInventoryAdjustmentLogs(storeId: string, search = "") {
   const params = new URLSearchParams({
     actionType: "adjustment",
-    take: "100",
+    limit: "100",
   });
   const trimmedSearch = search.trim();
 
@@ -508,7 +516,7 @@ export function getInventoryAdjustmentLogs(storeId: string, search = "") {
     params.set("search", trimmedSearch);
   }
 
-  return apiClient<InventoryAdjustmentLog[]>(
+  return apiClient<InventoryAdjustmentLogCollection>(
     `/product/inventory/logs/store/${storeId}?${params.toString()}`,
   );
 }
