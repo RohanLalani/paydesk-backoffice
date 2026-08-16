@@ -1,5 +1,5 @@
-import { ProductSectionPage } from "@/src/components/products/ProductSectionPage";
+import { InventoryAdjustmentsWorkspace } from "@/src/components/inventory/InventoryAdjustmentsWorkspace";
 
 export default function ProductInventoryAdjustmentsPage() {
-  return <ProductSectionPage href="/products/inventory-adjustments" />;
+  return <InventoryAdjustmentsWorkspace />;
 }

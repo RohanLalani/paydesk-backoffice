@@ -395,6 +395,40 @@ export type InventoryOverviewResponse = {
   };
 };
 
+export type InventoryAdjustmentPayload = {
+  storeId: string;
+  productId: string;
+  quantityChanged: number;
+  inventoryAdjustmentReasonId: string;
+};
+
+export type InventoryAdjustmentLog = {
+  id: string;
+  actionType: "adjustment";
+  quantityBefore: number;
+  quantityChanged: number;
+  quantityAfter: number;
+  reason: string;
+  notes: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
+  productName: string | null;
+  productBarcode: string | null;
+  productNumber: number | null;
+  inventoryAdjustmentReasonId: string | null;
+  createdAt: string;
+  product: ProductRecord;
+  staff: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  inventoryAdjustmentReason?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
 export type ProductPayload = Omit<
   ProductRecord,
   | "id"
@@ -449,6 +483,34 @@ export function listPriceBookProducts(storeId: string, query: PriceBookProductQu
 
 export function getInventoryOverview(storeId: string, range: InventoryOverviewRange = "30d") {
   return apiClient<InventoryOverviewResponse>(`/stores/${storeId}/inventory/overview?range=${range}`);
+}
+
+export function applyInventoryAdjustment(payload: InventoryAdjustmentPayload) {
+  return apiClient<ProductRecord>("/product/inventory/adjust", {
+    method: "POST",
+    body: {
+      storeId: payload.storeId,
+      productId: payload.productId,
+      quantityChanged: payload.quantityChanged,
+      inventoryAdjustmentReasonId: payload.inventoryAdjustmentReasonId,
+    },
+  });
+}
+
+export function getInventoryAdjustmentLogs(storeId: string, search = "") {
+  const params = new URLSearchParams({
+    actionType: "adjustment",
+    take: "100",
+  });
+  const trimmedSearch = search.trim();
+
+  if (trimmedSearch) {
+    params.set("search", trimmedSearch);
+  }
+
+  return apiClient<InventoryAdjustmentLog[]>(
+    `/product/inventory/logs/store/${storeId}?${params.toString()}`,
+  );
 }
 
 export function getStoreProductById(storeId: string, productId: string) {
